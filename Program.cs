@@ -1,4 +1,29 @@
-﻿// Operation class: represents one processing step of a job
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
+/*
+ PRIORITY RULES
+ Hier definieren wir alle Prioritätsregeln, die wir vergleichen wollen.
+ Vorteil von enum:
+ - typsicher
+ - keine Tippfehler (kein String!)
+ - einfach iterierbar im Experiment
+ */
+public enum PriorityRule
+{
+    LRPT,              // Longest Remaining Processing Time (das beste für unsere Ziefunktion laut dem Artikel)
+    LPT,               // Longest Processing Time
+    SPT,               // Shortest Processing Time
+    SRPT,              // Shortest Remaining Processing Time
+    Random,            // Zufällige Auswahl (mit Seed reproduzierbar)
+    SetupAwareLRPT     // Eigene Erweiterung: berücksichtigt Setup Times
+}
+
+
+  //Eine Operation gehört zu genau einem Job und wird auf genau einer Maschine ausgeführt.
+
 public class Operation
 {
     public int jobID;
@@ -6,12 +31,12 @@ public class Operation
     public int machine;
     public int processingTime;
 
- // scheduling results
+    // Ergebnisse des Schedulings
     public int startTime;
     public int endTime;
 
-    //for Giffler & Thompson  
-    public int ltt;
+    // Für LRPT / SRPT
+    public int remainingProcessingTime;
 
     public Operation(int jobID, int operationID, int machine, int processingTime)
     {
@@ -22,7 +47,9 @@ public class Operation
     }
 }
 
-// Job class: contains all operations of one job
+
+ //Ein Job besteht aus einer festen Reihenfolge von Operationen.
+
 public class Job
 {
     public int jobID;
@@ -35,7 +62,13 @@ public class Job
     }
 }
 
-// Instance class: represents the whole scheduling problem
+/*
+ INSTANCE Repräsentiert das gesamte Scheduling-Problem:
+  - Anzahl Jobs
+  - Anzahl Maschinen
+  - alle Jobs
+  - Setup-Zeiten zwischen Jobs
+ */
 public class Instance
 {
     public int numJobs;
@@ -49,66 +82,55 @@ public class Instance
     }
 }
 
+//INSTANCE READER Liest die Instanz aus einer Datei ein.
+ 
 public class InstanceReader
 {
     public static Instance ReadFromFile(string fileName)
     {
-        // read all lines of the file
         string[] lines = File.ReadAllLines(fileName);
-
         Instance instance = new Instance();
 
         int line = 0;
 
-        // skip "#Meta infos"
-        line++;
+        line++; // Skip "#Meta infos"
 
-        // read number of jobs and machines
+        // Anzahl Jobs und Maschinen
         string[] meta = lines[line].Split(',');
         instance.numJobs = int.Parse(meta[0]);
         instance.numMachines = int.Parse(meta[1]);
         line++;
 
-        // skip "#Processing times"
-        line++;
+        line++; // Skip "#Processing times"
 
-        // read jobs and their operations
+        // Jobs und Operationen einlesen
         for (int jobID = 1; jobID <= instance.numJobs; jobID++)
         {
             string[] values = lines[line].Split(',');
-
             Job job = new Job(jobID);
 
-            // first value = number of operations
             int numberOfOperations = int.Parse(values[0]);
-
-            // index to move through machine/time pairs
             int valueIndex = 1;
 
-            // read all operations of this job
             for (int opID = 1; opID <= numberOfOperations; opID++)
             {
                 int machine = int.Parse(values[valueIndex]);
-                int time = int.Parse(values[valueIndex + 1]);
+                int processingTime = int.Parse(values[valueIndex + 1]);
 
-                Operation op = new Operation(jobID, opID, machine, time);
+                job.operations.Add(new Operation(jobID, opID, machine, processingTime));
 
-                job.operations.Add(op);
-
-                valueIndex += 2; // move to next (machine, time) pair
+                valueIndex += 2;
             }
 
             instance.jobs.Add(job);
             line++;
         }
 
-        // skip "#Setup times"
-        line++;
+        line++; // Skip "#Setup times"
 
-        // initialize setup time matrix
         instance.setupTimes = new int[instance.numJobs, instance.numJobs];
 
-        // read setup times as 2D matrix
+        // Setup-Matrix einlesen
         for (int i = 0; i < instance.numJobs; i++)
         {
             string[] row = lines[line].Split(',');
@@ -125,181 +147,241 @@ public class InstanceReader
     }
 }
 
-//initialheuristic first without setup Times
+/*
+ INITIAL HEURISTIC (Giffler-Thompson)
+ Kern des Algorithmus:
+  - konstruiert einen aktiven Schedule
+  - nutzt Prioritätsregeln zur Konfliktauflösung
+ */
 public class InitialHeuristic
 {
-    // Step 1: calculate LTT values for all operations
-    public static void CalculateLTTValues(Instance instance)
+    // Random mit Seed → reproduzierbare Ergebnisse!
+    private static Random random = new Random(42);
+
+    public static void SetRandomSeed(int seed)
+    {
+        random = new Random(seed);
+    }
+
+    
+     //Berechnet Remaining Processing Time (LRPT)
+
+    public static void CalculateRemainingProcessingTimes(Instance instance)
     {
         foreach (Job job in instance.jobs)
         {
             int sum = 0;
 
-            // go backwards through the operations of one job
             for (int i = job.operations.Count - 1; i >= 0; i--)
             {
                 sum += job.operations[i].processingTime;
-
-                // LTT = processing time of this operation
-                //       + processing times of all following operations
-                job.operations[i].ltt = sum;
+                job.operations[i].remainingProcessingTime = sum;
             }
         }
     }
 
-    // Step 2: create an initial schedule including setup times
-    public static void CreateInitialSchedule(Instance instance)
+    //Setup-Zeit bestimmen: abhängig vom vorherigen Job auf dieser Maschine
+    private static int GetSetupTime(Instance instance, int[] lastJobOnMachine, Operation op)
     {
-        // Similar to r_ij in the exercise:
-        // stores when the next operation of each job is ready
+        int previousJob = lastJobOnMachine[op.machine];
+
+        if (previousJob == 0)
+            return 0;
+
+        return instance.setupTimes[previousJob - 1, op.jobID - 1];
+    }
+
+    /*
+     PRIORITY RULE SELECTION
+     Entscheidet, welche Operation aus der Konfliktmenge gewählt wird.
+     */
+    private static Operation SelectByPriorityRule(
+        List<Operation> conflictSet,
+        PriorityRule rule,
+        Instance instance,
+        int[] lastJobOnMachine)
+    {
+        if (rule == PriorityRule.LRPT)
+        {
+            return conflictSet.OrderByDescending(op => op.remainingProcessingTime).First();
+        }
+
+        if (rule == PriorityRule.LPT)
+        {
+            return conflictSet.OrderByDescending(op => op.processingTime).First();
+        }
+
+        if (rule == PriorityRule.SPT)
+        {
+            return conflictSet.OrderBy(op => op.processingTime).First();
+        }
+
+        if (rule == PriorityRule.SRPT)
+        {
+            return conflictSet.OrderBy(op => op.remainingProcessingTime).First();
+        }
+
+        /*
+         Setup-aware Erweiterung:
+         Berücksichtigt Rüstzeit direkt in der Entscheidung
+         */
+        if (rule == PriorityRule.SetupAwareLRPT)
+        {
+            return conflictSet
+                .OrderByDescending(op =>
+                {
+                    int setup = GetSetupTime(instance, lastJobOnMachine, op);
+                    return op.remainingProcessingTime - setup;
+                })
+                .First();
+        }
+
+        // Random Auswahl (Seed sorgt für Reproduzierbarkeit)
+        int index = random.Next(conflictSet.Count);
+        return conflictSet[index];
+    }
+
+    //Giffler-Thompson Algorithmus
+    public static void CreateInitialSchedule(Instance instance, PriorityRule rule)
+    {
         int[] nextOperationReadyTime = new int[instance.numJobs + 1];
-
-        // stores when each machine is available again
         int[] machineReadyTime = new int[instance.numMachines + 1];
-
-        // stores which job was processed last on each machine
-        // needed to calculate setup times
         int[] lastJobOnMachine = new int[instance.numMachines + 1];
-
-        // stores which operation is next for each job
         int[] nextOperation = new int[instance.numJobs + 1];
 
-        // at the beginning, the first operation of each job is ready
-        for (int jobID = 1; jobID <= instance.numJobs; jobID++)
-        {
-            nextOperation[jobID] = 1;
-        }
+        for (int j = 1; j <= instance.numJobs; j++)
+            nextOperation[j] = 1;
 
-        // count all operations
-        int totalOperations = 0;
-
-        foreach (Job job in instance.jobs)
-        {
-            totalOperations += job.operations.Count;
-        }
-
+        int totalOperations = instance.jobs.Sum(job => job.operations.Count);
         int scheduledOperations = 0;
 
-        // repeat until all operations are scheduled
         while (scheduledOperations < totalOperations)
         {
-            Operation bestOperation = null;
-            int bestStartTime = 0;
-            int bestEndTime = int.MaxValue;
+            int cStar = int.MaxValue;
+            int selectedMachine = -1;
 
-            // check the next possible operation of every job
+            /*
+              Schritt 1:
+              Finde früheste Fertigstellungszeit C*
+             */
             foreach (Job job in instance.jobs)
             {
                 if (nextOperation[job.jobID] <= job.operations.Count)
                 {
-                    Operation currentOperation = job.operations[nextOperation[job.jobID] - 1];
+                    Operation op = job.operations[nextOperation[job.jobID] - 1];
 
-                    int setupTime = 0;
+                    int setup = GetSetupTime(instance, lastJobOnMachine, op);
 
-                    // find the job that was processed last on this machine
-                    int previousJob = lastJobOnMachine[currentOperation.machine];
-
-                    // no initial setup time is needed if the machine is still unused
-                    if (previousJob != 0)
-                    {
-                        setupTime = instance.setupTimes[previousJob - 1, currentOperation.jobID - 1];
-                    }
-
-                    // earliest start time:
-                    // operation must wait until:
-                    // 1. the job is ready
-                    // 2. the machine is free
-                    // 3. the setup time on this machine is finished
-                    int startTime = Math.Max(
-                        nextOperationReadyTime[currentOperation.jobID],
-                        machineReadyTime[currentOperation.machine] + setupTime
+                    int start = Math.Max(
+                        nextOperationReadyTime[op.jobID],
+                        machineReadyTime[op.machine] + setup
                     );
 
-                    int endTime = startTime + currentOperation.processingTime;
+                    int completion = start + op.processingTime;
 
-                    // rule 1: choose operation with earliest end time
-                    if (endTime < bestEndTime)
+                    if (completion < cStar)
                     {
-                        bestOperation = currentOperation;
-                        bestStartTime = startTime;
-                        bestEndTime = endTime;
-                    }
-                    else if (endTime == bestEndTime)
-                    {
-                        // rule 2: if equal, choose larger LTT
-                        if (currentOperation.ltt > bestOperation.ltt)
-                        {
-                            bestOperation = currentOperation;
-                            bestStartTime = startTime;
-                            bestEndTime = endTime;
-                        }
-                        // rule 3: if still equal, choose larger processing time
-                        else if (currentOperation.ltt == bestOperation.ltt &&
-                                 currentOperation.processingTime > bestOperation.processingTime)
-                        {
-                            bestOperation = currentOperation;
-                            bestStartTime = startTime;
-                            bestEndTime = endTime;
-                        }
+                        cStar = completion;
+                        selectedMachine = op.machine;
                     }
                 }
             }
 
-            // save start and end time of selected operation
-            bestOperation.startTime = bestStartTime;
-            bestOperation.endTime = bestEndTime;
+            /*
+             Schritt 2:
+             Konfliktmenge bilden
+             */
+            List<Operation> conflictSet = new List<Operation>();
 
-            // update readiness time for the next operation of this job
-            nextOperationReadyTime[bestOperation.jobID] = bestEndTime;
+            foreach (Job job in instance.jobs)
+            {
+                if (nextOperation[job.jobID] <= job.operations.Count)
+                {
+                    Operation op = job.operations[nextOperation[job.jobID] - 1];
 
-            // update machine availability
-            machineReadyTime[bestOperation.machine] = bestEndTime;
+                    int setup = GetSetupTime(instance, lastJobOnMachine, op);
 
-            // remember which job was last processed on this machine
-            lastJobOnMachine[bestOperation.machine] = bestOperation.jobID;
+                    int start = Math.Max(
+                        nextOperationReadyTime[op.jobID],
+                        machineReadyTime[op.machine] + setup
+                    );
 
-            // move to the next operation of this job
-            nextOperation[bestOperation.jobID]++;
+                    if (op.machine == selectedMachine && start < cStar)
+                        conflictSet.Add(op);
+                }
+            }
 
+            /*
+             Schritt 3:
+             Prioritätsregel anwenden
+             */
+            Operation selected = SelectByPriorityRule(
+                conflictSet, rule, instance, lastJobOnMachine);
+
+            int setupSelected = GetSetupTime(instance, lastJobOnMachine, selected);
+
+            int startTime = Math.Max(
+                nextOperationReadyTime[selected.jobID],
+                machineReadyTime[selected.machine] + setupSelected
+            );
+
+            int endTime = startTime + selected.processingTime;
+
+            selected.startTime = startTime;
+            selected.endTime = endTime;
+
+            nextOperationReadyTime[selected.jobID] = endTime;
+            machineReadyTime[selected.machine] = endTime;
+            lastJobOnMachine[selected.machine] = selected.jobID;
+
+            nextOperation[selected.jobID]++;
             scheduledOperations++;
         }
     }
+
+    public static int CalculateCmax(Instance instance)
+    {
+        return instance.jobs
+            .SelectMany(j => j.operations)
+            .Max(op => op.endTime);
+    }
 }
+
+/*
+ * MAIN
+ Führt experimentellen Vergleich aller Regeln durch.
+ */
 public class Program
 {
     public static void Main(string[] args)
     {
-        // 1. Read instance from file
-        Instance instance = InstanceReader.ReadFromFile("ExampleInstanceSmall.txt");
+        string fileName = "ExampleInstanceSmall.txt";
 
-        // 2. Calculate LTT values
-        InitialHeuristic.CalculateLTTValues(instance);
+        int bestCmax = int.MaxValue;
+        PriorityRule bestRule = PriorityRule.LRPT;
 
-        // 3. Create initial schedule
-        InitialHeuristic.CreateInitialSchedule(instance);
+        Console.WriteLine("EXPERIMENTAL COMPARISON\n");
 
-        // 4. Print schedule
-        Console.WriteLine("INITIAL SCHEDULE:");
-        Console.WriteLine();
-
-        foreach (Job job in instance.jobs)
+        foreach (PriorityRule rule in Enum.GetValues(typeof(PriorityRule)))
         {
-            Console.WriteLine("Job " + job.jobID);
+            Instance instance = InstanceReader.ReadFromFile(fileName);
 
-            foreach (Operation op in job.operations)
+            InitialHeuristic.SetRandomSeed(42);
+            InitialHeuristic.CalculateRemainingProcessingTimes(instance);
+            InitialHeuristic.CreateInitialSchedule(instance, rule);
+
+            int cmax = InitialHeuristic.CalculateCmax(instance);
+
+            Console.WriteLine(rule + " -> Cmax = " + cmax);
+
+            if (cmax < bestCmax)
             {
-                Console.WriteLine(
-                    "  Operation " + op.operationID +
-                    " | Job " + op.jobID +
-                    " | Machine " + op.machine +
-                    " | Start " + op.startTime +
-                    " | End " + op.endTime +
-                    " | ProcTime " + op.processingTime +
-                    " | LTT " + op.ltt
-                );
+                bestCmax = cmax;
+                bestRule = rule;
             }
-
-            Console.WriteLine();
         }
+
+        Console.WriteLine("\nBest rule: " + bestRule);
+        Console.WriteLine("Best Cmax: " + bestCmax);
     }
 }
