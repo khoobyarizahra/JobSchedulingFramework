@@ -9,6 +9,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="InstanceGenerator\**" />
+    <EmbeddedResource Remove="InstanceGenerator\**" />
+    <None Remove="InstanceGenerator\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="Instances\ExampleInstanceSmall.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
