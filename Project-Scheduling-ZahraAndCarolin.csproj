@@ -15,6 +15,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Instances\ExampleInstanceMedium.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Instances\ExampleInstanceSmall.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -31,6 +34,21 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Instances\instance_5.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Instances\Mediuminstance_1.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Instances\Mediuminstance_2.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Instances\MediumInstance_3.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Instances\MediumInstance_4.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Instances\MediumInstance_5.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

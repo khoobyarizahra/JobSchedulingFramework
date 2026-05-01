@@ -365,7 +365,7 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        string fileName = Path.Combine("Instances", "ExampleInstanceSmall.txt");
+        string fileName = Path.Combine("Instances", "Mediuminstance_5.txt");
 
         int bestCmax = int.MaxValue;
         PriorityRule bestRule = PriorityRule.LRPT;

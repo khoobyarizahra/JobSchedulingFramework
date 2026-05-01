@@ -7,17 +7,17 @@ class Generator
 
     static void Main()
     {
-        int jobs = 5;
-        int machines = 3;
+        int jobs = 10;
+        int machines = 5;
 
         int count = 1;
 
-        while (File.Exists($"instance_{count}.txt"))
+        while (File.Exists($"MediumInstance_{count}.txt"))
         {
             count++;
         }
 
-        string fileName = $"instance_{count}.txt";
+        string fileName = $"MediumInstance_{count}.txt";
 
         using (StreamWriter writer = new StreamWriter(fileName))
         {
