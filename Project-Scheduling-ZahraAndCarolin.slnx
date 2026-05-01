@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="../InstanceGenerator/InstanceGenerator.csproj" Id="7dd0d1ec-d689-458f-9de2-4bda00311670" />
   <Project Path="Project-Scheduling-ZahraAndCarolin.csproj" />
 </Solution>
