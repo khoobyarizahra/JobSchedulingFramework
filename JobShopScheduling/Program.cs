@@ -15,7 +15,7 @@ public enum PriorityRule
 {
     LRPT,              // Longest Remaining Processing Time (das beste für unsere Ziefunktion laut dem Artikel)
     LPT,               // Longest Processing Time
-    SPT,               // Shortest Processing Time
+    SPT,               // Shortest Processing Time (Laut Paper sehr robust, vorallem in Kombination mit bspw. LRPT)
     SRPT,              // Shortest Remaining Processing Time
     Random,            // Zufällige Auswahl (mit Seed reproduzierbar)
     SetupAwareLRPT     // Eigene Erweiterung: berücksichtigt Setup Times
