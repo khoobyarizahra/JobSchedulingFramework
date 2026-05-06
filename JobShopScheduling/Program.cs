@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -88,9 +88,7 @@ public class InstanceReader
 {
     public static Instance ReadFromFile(string fileName)
     {
-        // read all lines of the file
         string[] lines = File.ReadAllLines(fileName);
-
         Instance instance = new Instance();
 
         int line = 0;
@@ -109,16 +107,11 @@ public class InstanceReader
         for (int jobID = 1; jobID <= instance.numJobs; jobID++)
         {
             string[] values = lines[line].Split(',');
-
             Job job = new Job(jobID);
 
-            // first value = number of operations
             int numberOfOperations = int.Parse(values[0]);
-
-            // index to move through machine/time pairs
             int valueIndex = 1;
 
-            // read all operations of this job
             for (int opID = 1; opID <= numberOfOperations; opID++)
             {
                 int machine = int.Parse(values[valueIndex]);
@@ -135,7 +128,6 @@ public class InstanceReader
 
         line++; // Skip "#Setup times"
 
-        // initialize setup time matrix
         instance.setupTimes = new int[instance.numJobs, instance.numJobs];
 
         // Setup-Matrix einlesen
@@ -180,7 +172,6 @@ public class InitialHeuristic
         {
             int sum = 0;
 
-            // go backwards through the operations of one job
             for (int i = job.operations.Count - 1; i >= 0; i--)
             {
                 sum += job.operations[i].processingTime;
@@ -264,7 +255,6 @@ public class InitialHeuristic
         int totalOperations = instance.jobs.Sum(job => job.operations.Count);
         int scheduledOperations = 0;
 
-        // repeat until all operations are scheduled
         while (scheduledOperations < totalOperations)
         {
             int cStar = int.MaxValue;
@@ -358,114 +348,32 @@ public class InitialHeuristic
 }
 
 /*
- HEURISTIC EXPERIMENT
- Diese Klasse führt einen experimentellen Vergleich
- aller definierten Prioritätsregeln durch.
-
- Ziel:
- - Für jede Regel einen vollständigen Schedule erzeugen
- - Den resultierenden Cmax berechnen
- - Die beste Regel bestimmen
-
-*/
-public class HeuristicExperiment
+ * MAIN
+ Führt experimentellen Vergleich aller Regeln durch.
+ */
+public class Program
 {
-    /*
-     Run-Methode:
-     Führt den kompletten Vergleich aller Prioritätsregeln aus.
-    */
-    public static void Run(string fileName)
+    public static void Main(string[] args)
     {
-        /*
-         int.MaxValue = größtmöglicher int-Wert.
-         Dadurch ist garantiert, dass der erste echte Cmax kleiner ist.
-        */
+        string fileName = "ExampleInstanceSmall.txt";
+
         int bestCmax = int.MaxValue;
-
-        /*
-         Speichert die aktuell beste Prioritätsregel.
-         Initialwert ist hier LRPT,
-         wird aber später ggf. überschrieben.
-        */
         PriorityRule bestRule = PriorityRule.LRPT;
-
-        Console.WriteLine(fileName);
 
         Console.WriteLine("EXPERIMENTAL COMPARISON\n");
 
-        /*
-         Iteriert automatisch über ALLE Werte des Enums PriorityRule.
-
-         Enum.GetValues(typeof(PriorityRule)) liefert:
-         - LRPT
-         - LPT
-         - SPT
-         - SRPT
-         - Random
-         - SetupAwareLRPT
-
-         Dadurch muss man neue Regeln nur im Enum ergänzen.
-        */
         foreach (PriorityRule rule in Enum.GetValues(typeof(PriorityRule)))
         {
-            /*
-             Für jede Regel wird die Instanz neu geladen.
-
-             Sehr wichtig:
-             Das Scheduling verändert die Daten
-             (Startzeiten, Endzeiten usw.).
-             Deshalb braucht jede Regel eine "frische" Instanz.
-            */
             Instance instance = InstanceReader.ReadFromFile(fileName);
 
-            /*
-             Setzt den Zufalls-Seed.
-             Dadurch bleibt die Random-Regel reproduzierbar,
-             also bei jedem Programmlauf identisch.
-            */
             InitialHeuristic.SetRandomSeed(42);
-            /*
-             Berechnet für jede Operation
-             die Remaining Processing Time.
-
-             Wird für:
-             - LRPT
-             - SRPT
-             - SetupAwareLRPT
-
-             benötigt.
-            */
             InitialHeuristic.CalculateRemainingProcessingTimes(instance);
-
-            /*
-             Erzeugt den eigentlichen Schedule
-             mit der aktuell getesteten Prioritätsregel.
-            */
             InitialHeuristic.CreateInitialSchedule(instance, rule);
 
-            /*
-             Berechnet den Makespan (Cmax).
-
-             Cmax = Fertigstellungszeit
-                     der letzten Operation.
-            */
             int cmax = InitialHeuristic.CalculateCmax(instance);
 
-            /*
-             Ausgabe der aktuellen Regel
-             und ihres Ergebnisses.
-            */
             Console.WriteLine(rule + " -> Cmax = " + cmax);
 
-            /*
-             Prüft:
-             Ist der neue Cmax besser (kleiner)
-             als der bisher beste?
-
-             Falls ja:
-             - neuen besten Cmax speichern
-             - zugehörige Regel merken
-            */
             if (cmax < bestCmax)
             {
                 bestCmax = cmax;
@@ -473,20 +381,7 @@ public class HeuristicExperiment
             }
         }
 
-        /*
-         Finale Ausgabe
-         der besten gefundenen Regel
-         und ihres Cmax.
-        */
         Console.WriteLine("\nBest rule: " + bestRule);
         Console.WriteLine("Best Cmax: " + bestCmax);
-    }
-}
-public class Program
-{
-    public static void Main(string[] args)
-    {
-        string fileName = "ExampleInstanceSmall.txt";
-        HeuristicExperiment.Run(fileName);
     }
 }
