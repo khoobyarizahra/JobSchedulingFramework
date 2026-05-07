@@ -37,3 +37,15 @@ Projektmappe
     |   |__GantChart.cs
     |
     |___Program.cs
+
+
+Was kommt in welchen Ordner:
+
+Models = „Was ist das Problem?“
+DataInput = „Wo kommen die Daten her?“
+Heuristics = „Wie löse ich es?“
+Experiments = „Was ist besser?“
+Utils = „Hilfsfunktionen“
+Program = „Start“
+DataGeneration = "Instanz Generatoren"
+Visiualisation = "Visualisationen/Gant Chart"
