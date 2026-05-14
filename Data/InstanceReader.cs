@@ -1,11 +1,11 @@
-﻿using Project_Scheduling_ZahraAndCarolin.Models;
+﻿using JobShopSchedulingFramework.Models;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
 //INSTANCE READER Liest die Instanz aus einer Datei ein.
 
-namespace Project_Scheduling_ZahraAndCarolin.DataInput
+namespace JobShopSchedulingFramework.Data
 {
 
     public class InstanceReader

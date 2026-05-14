@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Project_Scheduling_ZahraAndCarolin.Models
+namespace JobShopSchedulingFramework.Models
 {
     public class Operation
     {

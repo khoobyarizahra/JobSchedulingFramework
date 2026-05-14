@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace JobShopSchedulingFramework.Visualisation
+namespace JobShopSchedulingFramework.Models
 {
-    internal class GantChart
+    internal class Move
     {
     }
 }

@@ -6,7 +6,7 @@ using System.Text;
 //Ein Job besteht aus einer festen Reihenfolge von Operationen.
 
 
-namespace Project_Scheduling_ZahraAndCarolin.Models
+namespace JobShopSchedulingFramework.Models
 {
     public class Job
     {

@@ -1,353 +1,310 @@
-﻿using System;
+﻿using JobShopSchedulingFramework.Models;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-/* ENUM: INSTANCE TYPES
- Defines different types of instances we want to generate.
- This allows us to test how algorithms behave under different conditions.
-*/
-public enum InstanceType
+namespace JobShopSchedulingFramework.DataGeneration
 {
-    Normal,
-    LongProcessingTimes,
-    SetupHeavy,
-    BottleneckMachine,
-    MixedRealistic
-}
-
-/* CLASS: OPERATION
- Represents ONE operation of a job.
- Each operation has:
- - a machine
- - a processing time
-*/
-public class Operation
-{
-    public int Machine;
-    public int ProcessingTime;
-
-    public Operation(int machine, int processingTime)
-    {
-        this.Machine = machine;
-        this.ProcessingTime = processingTime;
-    }
-}
-
-/* CLASS: JOB
- Represents a job, which consists of multiple operations.
-*/
-public class Job
-{
-    public int JobId;
-    public List<Operation> Operations;
-
-    public Job(int jobId)
-    {
-        this.JobId = jobId;
-        this.Operations = new List<Operation>();
-    }
-}
-
-/* CLASS: INSTANCE
- Represents the whole scheduling instance.
-*/
-public class Instance
-{
-    public int NumberOfJobs;
-    public int NumberOfMachines;
-    public List<Job> Jobs;
-    public int[,] SetupTimes;
-
-    public Instance(int numberOfJobs, int numberOfMachines)
-    {
-        this.NumberOfJobs = numberOfJobs;
-        this.NumberOfMachines = numberOfMachines;
-        this.Jobs = new List<Job>();
-
-        // setup[fromJob, toJob]
-        this.SetupTimes = new int[numberOfJobs, numberOfJobs];
-    }
-}
-
-/* CLASS: INSTANCE GENERATOR
- Responsible for creating instances:
- - jobs
- - operations
- - processing times
- - setup times
-*/
-public class InstanceGenerator
-{
-    private Random random;
-    private InstanceType instanceType;
-
-    // Processing time range
-    private int minProcessingTime;
-    private int maxProcessingTime;
 
     /*
-     Setup time ratio based on Vinod and Sridharan:
-     setup time ratio = mean setup time / mean processing time
-     The article uses 20%, 30%, and 40%.
+     INSTANCE GENERATOR ADVANCED
+
+     This class creates artificial Job Shop Scheduling instances.
+
+     Important:
+     - It does NOT define Job, Operation, or Instance again.
+     - It uses the existing model classes from the Models folder.
+     - Therefore the project has one shared data structure.
     */
-    private double setupTimeRatio;
-
-    public InstanceGenerator(int seed, InstanceType instanceType)
+    public class InstanceGeneratorAdvanced
     {
-        this.random = new Random(seed);
-        this.instanceType = instanceType;
+        // Random object for reproducible random numbers.
+        private readonly Random random;
 
-        SetParameters();
-    }
+        // Defines which type of instance should be generated.
+        private readonly InstanceType instanceType;
 
-    public Instance Generate(int numberOfJobs, int numberOfMachines)
-    {
-        Instance instance = new Instance(numberOfJobs, numberOfMachines);
+        // Minimum processing time for generated operations.
+        private int minProcessingTime;
 
-        GenerateJobs(instance);
-        GenerateSetupTimes(instance);
+        // Maximum processing time for generated operations.
+        private int maxProcessingTime;
 
-        return instance;
-    }
+        /*
+         Setup time ratio:
+         Example:
+         setupTimeRatio = 0.20 means that setup times are roughly
+         20% of the average processing time.
+        */
+        private double setupTimeRatio;
 
-    /*
-     PARAMETER CONFIGURATION
+        /*
+         Constructor.
 
-     Processing-time ranges depend on the selected instance type.
+         seed:
+         A fixed seed makes the generated instances reproducible.
+         This means: same seed + same parameters = same instance.
 
-     Setup times are generated using one setup-time ratio.
-     The article uses setup-time ratios of 20%, 30%, and 40%.
-    */
-    private void SetParameters()
-    {
-        if (instanceType == InstanceType.Normal)
+         instanceType:
+         Controls whether we generate normal, setup-heavy, bottleneck, etc.
+         instances.
+        */
+        public InstanceGeneratorAdvanced(int seed, InstanceType instanceType)
         {
-            minProcessingTime = 10;
-            maxProcessingTime = 100;
+            this.random = new Random(seed);
+            this.instanceType = instanceType;
 
-            // 20% setup-time ratio
-            setupTimeRatio = 0.20;
+            SetParameters();
         }
-        else if (instanceType == InstanceType.LongProcessingTimes)
-        {
-            minProcessingTime = 50;
-            maxProcessingTime = 250;
 
-            // 20% setup-time ratio
-            setupTimeRatio = 0.20;
+        /*
+         Generate creates one complete scheduling instance.
+
+         numberOfJobs:
+         Number of jobs in the instance.
+
+         numberOfMachines:
+         Number of available machines.
+
+         Returns:
+         An Instance object that can be used directly by your heuristic.
+        */
+        public Instance Generate(int numberOfJobs, int numberOfMachines)
+        {
+            // Create the existing Instance model from Models/Instance.cs.
+            Instance instance = new Instance();
+
+            // Store basic meta information.
+            instance.numJobs = numberOfJobs;
+            instance.numMachines = numberOfMachines;
+
+            // Create setup matrix: setupTimes[fromJob - 1, toJob - 1].
+            instance.setupTimes = new int[numberOfJobs, numberOfJobs];
+
+            // Generate jobs and their operations.
+            GenerateJobs(instance);
+
+            // Generate sequence-dependent setup times.
+            GenerateSetupTimes(instance);
+
+            return instance;
         }
-        else if (instanceType == InstanceType.SetupHeavy)
-        {
-            minProcessingTime = 10;
-            maxProcessingTime = 100;
 
-            // 40% setup-time ratio
-            setupTimeRatio = 0.40;
+        /*
+         SetParameters defines the processing-time range and setup intensity.
+
+         This keeps the Generate method clean.
+        */
+        private void SetParameters()
+        {
+            if (instanceType == InstanceType.Normal)
+            {
+                minProcessingTime = 10;
+                maxProcessingTime = 100;
+                setupTimeRatio = 0.20;
+            }
+            else if (instanceType == InstanceType.LongProcessingTimes)
+            {
+                minProcessingTime = 50;
+                maxProcessingTime = 250;
+                setupTimeRatio = 0.20;
+            }
+            else if (instanceType == InstanceType.SetupHeavy)
+            {
+                minProcessingTime = 10;
+                maxProcessingTime = 100;
+                setupTimeRatio = 0.40;
+            }
+            else if (instanceType == InstanceType.BottleneckMachine)
+            {
+                minProcessingTime = 10;
+                maxProcessingTime = 100;
+                setupTimeRatio = 0.30;
+            }
+            else
+            {
+                // MixedRealistic
+                minProcessingTime = 10;
+                maxProcessingTime = 150;
+                setupTimeRatio = 0.30;
+            }
         }
-        else if (instanceType == InstanceType.BottleneckMachine)
-        {
-            minProcessingTime = 10;
-            maxProcessingTime = 100;
 
-            // 30% setup-time ratio
-            setupTimeRatio = 0.30;
+        /*
+         GenerateJobs creates all jobs of the instance.
+
+         Each job receives a random number of operations.
+         Each operation has:
+         - jobID
+         - operationID
+         - machine
+         - processingTime
+        */
+        private void GenerateJobs(Instance instance)
+        {
+            // In a job shop, a job can have fewer operations than machines.
+            int minOperationsPerJob = 2;
+
+            // A job should not use more machines than available.
+            int maxOperationsPerJob = instance.numMachines;
+
+            // Create jobs with IDs 1, 2, ..., numJobs.
+            for (int jobID = 1; jobID <= instance.numJobs; jobID++)
+            {
+                // Use existing Job class from Models/Job.cs.
+                Job job = new Job(jobID);
+
+                // Random number of operations for this job.
+                int numberOfOperations = random.Next(
+                    minOperationsPerJob,
+                    maxOperationsPerJob + 1
+                );
+
+                // Select machines for the operations.
+                List<int> machines = SelectMachines(
+                    instance.numMachines,
+                    numberOfOperations
+                );
+
+                // operationID starts at 1 because your project uses 1-based IDs.
+                int operationID = 1;
+
+                foreach (int machine in machines)
+                {
+                    // Generate processing time depending on the instance type.
+                    int processingTime = GenerateProcessingTime(machine);
+
+                    // Use existing Operation class from Models/Operation.cs.
+                    Operation operation = new Operation(
+                        jobID,
+                        operationID,
+                        machine,
+                        processingTime
+                    );
+
+                    // Add operation to the job.
+                    job.operations.Add(operation);
+
+                    operationID++;
+                }
+
+                // Add complete job to the instance.
+                instance.jobs.Add(job);
+            }
         }
-        else // MixedRealistic
-        {
-            minProcessingTime = 10;
-            maxProcessingTime = 150;
 
-            // 30% setup-time ratio
-            setupTimeRatio = 0.30;
+        /*
+         SelectMachines chooses the machines used by one job.
+
+         Important:
+         - One machine should not appear twice in the same job.
+         - The order is randomly shuffled because operation order matters.
+        */
+        private List<int> SelectMachines(int numberOfMachines, int numberOfOperations)
+        {
+            List<int> machines;
+
+            if (instanceType == InstanceType.BottleneckMachine)
+            {
+                // Machine 1 appears in every job.
+                // This creates a bottleneck and makes the instance harder.
+                machines = new List<int> { 1 };
+
+                // Select remaining machines from 2, 3, ..., numberOfMachines.
+                List<int> otherMachines = Enumerable.Range(2, numberOfMachines - 1)
+                    .OrderBy(x => random.Next())
+                    .Take(numberOfOperations - 1)
+                    .ToList();
+
+                machines.AddRange(otherMachines);
+            }
+            else
+            {
+                // Select random machines without repetition.
+                machines = Enumerable.Range(1, numberOfMachines)
+                    .OrderBy(x => random.Next())
+                    .Take(numberOfOperations)
+                    .ToList();
+            }
+
+            // Shuffle final machine order.
+            // This creates the technological order of the job.
+            return machines.OrderBy(x => random.Next()).ToList();
         }
-    }
 
-    // JOB GENERATION
-    private void GenerateJobs(Instance instance)
-    {
-        int minOperationsPerJob = 2;
-        int maxOperationsPerJob = instance.NumberOfMachines;
+        /*
+         GenerateProcessingTime creates the duration of one operation.
 
-        for (int jobId = 1; jobId <= instance.NumberOfJobs; jobId++)
+         For bottleneck instances, machine 1 receives longer processing times.
+         For mixed realistic instances, some operations are much longer.
+        */
+        private int GenerateProcessingTime(int machine)
         {
-            Job job = new Job(jobId);
+            if (instanceType == InstanceType.BottleneckMachine && machine == 1)
+            {
+                // Longer processing times on the bottleneck machine.
+                return random.Next(maxProcessingTime, maxProcessingTime * 2 + 1);
+            }
 
-            int numberOfOperations = random.Next(
-                minOperationsPerJob,
-                maxOperationsPerJob + 1
+            if (instanceType == InstanceType.MixedRealistic)
+            {
+                // 70% normal operations.
+                if (random.Next(100) < 70)
+                {
+                    return random.Next(minProcessingTime, maxProcessingTime + 1);
+                }
+
+                // 30% long operations.
+                return random.Next(maxProcessingTime, maxProcessingTime * 2 + 1);
+            }
+
+            // Standard case.
+            return random.Next(minProcessingTime, maxProcessingTime + 1);
+        }
+
+        /*
+         GenerateSetupTimes creates sequence-dependent setup times.
+
+         setupTimes[i, j] means:
+         setup time from job i+1 to job j+1.
+
+         Example:
+         setupTimes[0, 2] = setup time from job 1 to job 3.
+        */
+        private void GenerateSetupTimes(Instance instance)
+        {
+            // Approximate average processing time.
+            double meanProcessingTime = (minProcessingTime + maxProcessingTime) / 2.0;
+
+            // Average setup time based on the selected setup ratio.
+            int meanSetupTime = Math.Max(
+                1,
+                (int)(setupTimeRatio * meanProcessingTime)
             );
 
-            List<int> machines = SelectMachines(
-                instance.NumberOfMachines,
-                numberOfOperations
-            );
+            // Lower and upper setup-time bounds.
+            int minSetup = Math.Max(1, (int)(0.5 * meanSetupTime));
+            int maxSetup = Math.Max(minSetup + 1, (int)(1.5 * meanSetupTime));
 
-            // for each machine we craete an operation with a processing time
-            foreach (int machine in machines)
+            // Fill setup matrix.
+            for (int fromJob = 0; fromJob < instance.numJobs; fromJob++)
             {
-                int processingTime = GenerateProcessingTime(machine);
-                job.Operations.Add(new Operation(machine, processingTime));
-            }
-
-            instance.Jobs.Add(job);
-        }
-    }
-
-    // MACHINE SELECTION
-    private List<int> SelectMachines(int numberOfMachines, int numberOfOperations)
-    {
-        List<int> machines = new List<int>();
-
-        if (instanceType == InstanceType.BottleneckMachine)
-        {
-            // Machine 1 appears in every job to create a bottleneck.
-            machines.Add(1);
-
-            List<int> others = Enumerable.Range(2, numberOfMachines - 1)
-                .OrderBy(x => random.Next())
-                .Take(numberOfOperations - 1)
-                .ToList();
-
-            machines.AddRange(others);
-        }
-        else
-        {
-            machines = Enumerable.Range(1, numberOfMachines)
-                .OrderBy(x => random.Next())
-                .Take(numberOfOperations)
-                .ToList();
-        }
-
-        // Shuffle operation order
-        return machines.OrderBy(x => random.Next()).ToList();
-    }
-
-    // PROCESSING TIME GENERATION
-    private int GenerateProcessingTime(int machine)
-    {
-        if (instanceType == InstanceType.BottleneckMachine && machine == 1)
-        {
-            // Machine 1 gets longer processing times.
-            return random.Next(maxProcessingTime, maxProcessingTime * 2 + 1);
-        }
-
-        if (instanceType == InstanceType.MixedRealistic)
-        {
-            // 70% normal operations, 30% long operations
-            if (random.Next(100) < 70)
-            {
-                return random.Next(minProcessingTime, maxProcessingTime + 1);
-            }
-
-            return random.Next(maxProcessingTime, maxProcessingTime * 2 + 1);
-        }
-
-        return random.Next(minProcessingTime, maxProcessingTime + 1);
-    }
-
-    // SETUP TIME GENERATION
-    private void GenerateSetupTimes(Instance instance)
-    {
-        // Mean processing time
-        double meanProcessingTime = (minProcessingTime + maxProcessingTime) / 2.0;
-
-        // Mean setup time according to setup-time ratio:
-        // mean setup time = setupTimeRatio * mean processing time
-        int meanSetupTime = Math.Max(1, (int)(setupTimeRatio * meanProcessingTime));
-
-        for (int i = 0; i < instance.NumberOfJobs; i++)
-        {
-            for (int j = 0; j < instance.NumberOfJobs; j++)
-            {
-                if (i == j)
+                for (int toJob = 0; toJob < instance.numJobs; toJob++)
                 {
-                    // No setup from a job to itself.
-                    instance.SetupTimes[i, j] = 0;
-                }
-                else
-                {
-                    // The article generates individual setup times from an exponential distribution.
-                    // To keep this student project simple, we create controlled variation around
-                    // the mean setup time: approximately 50% to 150% of the mean.
-                    int minSetup = Math.Max(1, (int)(0.5 * meanSetupTime));
-                    int maxSetup = Math.Max(minSetup + 1, (int)(1.5 * meanSetupTime));
-
-                    instance.SetupTimes[i, j] = random.Next(minSetup, maxSetup + 1);
-                }
-            }
-        }
-    }
-}
-
-// CLASS: WRITER
-// Writes the instance to file in the required format.
-public class InstanceWriter
-{
-    public void WriteToFile(Instance instance, string fileName)
-    {
-        using (StreamWriter writer = new StreamWriter(fileName))
-        {
-            writer.WriteLine("#Meta infos");
-            writer.WriteLine($"{instance.NumberOfJobs},{instance.NumberOfMachines}");
-
-            writer.WriteLine("#Processing times");
-
-            foreach (Job job in instance.Jobs)
-            {
-                string line = job.Operations.Count.ToString();
-
-                foreach (Operation op in job.Operations)
-                {
-                    line += $",{op.Machine},{op.ProcessingTime}";
-                }
-
-                writer.WriteLine(line);
-            }
-
-            writer.WriteLine("#Setup times");
-
-            for (int i = 0; i < instance.NumberOfJobs; i++)
-            {
-                string line = "";
-
-                for (int j = 0; j < instance.NumberOfJobs; j++)
-                {
-                    line += instance.SetupTimes[i, j];
-
-                    if (j < instance.NumberOfJobs - 1)
+                    if (fromJob == toJob)
                     {
-                        line += ",";
+                        // No setup from a job to itself.
+                        instance.setupTimes[fromJob, toJob] = 0;
+                    }
+                    else
+                    {
+                        // Random setup time between two different jobs.
+                        instance.setupTimes[fromJob, toJob] =
+                            random.Next(minSetup, maxSetup + 1);
                     }
                 }
-
-                writer.WriteLine(line);
             }
         }
-    }
-}
-
-// MAIN PROGRAM
-public class Program
-{
-    public static void Main()
-    {
-        int jobs = 10;
-        int machines = 5;
-        int seed = 42;
-
-        InstanceType type = InstanceType.SetupHeavy;
-
-        InstanceGenerator generator = new InstanceGenerator(seed, type);
-        Instance instance = generator.Generate(jobs, machines);
-
-        string fileName = $"Instance_{type}.txt";
-
-        InstanceWriter writer = new InstanceWriter();
-        writer.WriteToFile(instance, fileName);
-
-        Console.WriteLine("Instance created!");
-        Console.WriteLine($"Type: {type}");
-        Console.WriteLine($"File: {fileName}");
     }
 }

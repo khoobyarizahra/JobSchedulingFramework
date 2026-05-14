@@ -13,7 +13,7 @@ using System.Text;
  */
 
 
-namespace Project_Scheduling_ZahraAndCarolin.Models
+namespace JobShopSchedulingFramework.Heuristics.Initial
 {
     public enum PriorityRule
     {

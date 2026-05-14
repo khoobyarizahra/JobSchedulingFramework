@@ -7,7 +7,7 @@ using System.Text;
 
 
 /*
-namespace Project_Scheduling_ZahraAndCarolin.DataGeneration
+namespace JobShopSchedulingFramework.DataGeneration
 {
     class InstanceGeneratorEasy
     {

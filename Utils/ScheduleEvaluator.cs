@@ -1,4 +1,4 @@
-﻿using Project_Scheduling_ZahraAndCarolin.Models;
+﻿using JobShopSchedulingFramework.Models;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -14,7 +14,7 @@ using System.Linq;
  da alle Aufträge früher abgeschlossen werden.
 */
 
-namespace Project_Scheduling_ZahraAndCarolin.Utils
+namespace JobShopSchedulingFramework.Utils
 {
     public static class ScheduleEvaluator
     {

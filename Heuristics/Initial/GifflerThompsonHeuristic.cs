@@ -1,4 +1,4 @@
-﻿using Project_Scheduling_ZahraAndCarolin.Models;
+﻿using JobShopSchedulingFramework.Models;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -10,10 +10,10 @@ Kern des Algorithmus:
 - nutzt Prioritätsregeln zur Konfliktauflösung
 */
 
-namespace Project_Scheduling_ZahraAndCarolin.Heuristics
+namespace JobShopSchedulingFramework.Heuristics.Initial
 {
 
-    public class InitialHeuristic
+    public class GifflerThompsonHeuristic
     {
         // Random mit Seed → reproduzierbare Ergebnisse!
         private static Random random = new Random(42);

@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace JobShopSchedulingFramework.Visualisation
+namespace JobShopSchedulingFramework.Solvers
 {
-    internal class GantChart
+    internal class CpSolverRunner
     {
     }
 }
