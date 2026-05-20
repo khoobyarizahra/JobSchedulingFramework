@@ -12,7 +12,6 @@ namespace JobShopSchedulingFramework.Data
      - Only responsible for writing files.
      - No generation logic.
      - No scheduling logic.
-
      Single Responsibility Principle:
      one class = one task.
     */

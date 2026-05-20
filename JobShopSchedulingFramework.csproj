@@ -15,6 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Heuristics\NeighborhoodsCarolin\CriticalPathFinder.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="Instances\Benchmark\ExampleInstanceMedium.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -55,6 +59,7 @@
 
   <ItemGroup>
     <Folder Include="Heuristics\Metaheuristics\" />
+    <Folder Include="Heuristics\Neighborhoods\" />
     <Folder Include="Heuristics\Neighborhoods\" />
   </ItemGroup>
 

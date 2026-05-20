@@ -72,3 +72,19 @@ JobShopSchedulingFramework/
 │
 └── README.md
 
+Arcitecture:
+Instanz
+   ↓
+Giffler-Thompson
+   ↓
+Schedule
+   ↓
+Nachbarschaftsmodell
+   ↓
+kritischer Pfad
+   ↓
+kritische Blöcke
+   ↓
+zulässige Nachbarn
+   ↓
+Tabusuche
