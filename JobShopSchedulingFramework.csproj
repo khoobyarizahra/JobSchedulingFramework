@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Heuristics\NeighborhoodsCarolin\CriticalPathFinder.cs" />
+    <Compile Remove="Heuristics\Neighborhoods\CriticalPathFinder.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -58,8 +58,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Heuristics\Metaheuristics\" />
-    <Folder Include="Heuristics\Neighborhoods\" />
     <Folder Include="Heuristics\Neighborhoods\" />
   </ItemGroup>
 
