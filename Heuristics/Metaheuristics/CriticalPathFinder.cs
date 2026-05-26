@@ -1,188 +1,585 @@
-﻿using JobShopSchedulingFramework.Heuristics.Metaheuristics;
+﻿// Klasse zur Berechnung des kritischen Pfades
+// basierend auf dem Graph-Ansatz aus dem Paper
+using JobShopSchedulingFramework.Heuristics.Metaheuristics;
 using JobShopSchedulingFramework.Models;
-using System.Collections.Generic;
-using System.Linq;
 
-namespace JobShopSchedulingFramework.Heuristics.Tabu
+public static class CriticalPathFinder
 {
-    public static class CriticalPathFinder
+    // Repräsentiert eine Kante im Graphen
+    // eine Kante verbindet zwei Operationen
+    //
+    // from  = Vorgängeroperation
+    // to    = Nachfolgeroperation
+    //
+    // setup:
+    // Setupzeit zwischen den beiden Operationen
+    // nur relevant bei Maschinen-Kanten
+    private class Edge
     {
-        public static List<Operation> FindCriticalPath(
-            Instance instance,
-            Dictionary<int, List<Operation>> machineOrders)
+        public Operation from;
+        public Operation to;
+        public int setup;
+
+        public Edge(
+            Operation from,
+            Operation to,
+            int setup)
         {
-            //wir starten mit der Operation, die am spätesten fertig wird,
-            //da diese den aktuellen Cmax bestimmt.
-            //Dafür müssen wir alle Operationen aller Jobs betrachten
-            //und diejenige mit der größten Endzeit auswählen.
-            Operation current = instance.jobs
-                .SelectMany(job => job.operations)
-                .OrderByDescending(op => op.endTime)
-                .First();
-
-            //Hier speichern wir den kritischen Pfad rückwärts,
-            //da wir von hinten nach vorne durch die Vorgänger laufen.
-            List<Operation> criticalPathBackwards =
-                new List<Operation>();
-
-            //Wir laufen solange rückwärts,
-            //bis keine Vorgänger mehr existieren.
-            while (current != null)
-            {
-                //Die aktuelle Operation gehört zum kritischen Pfad
-                //und wird deshalb gespeichert.
-                criticalPathBackwards.Add(current);
-
-                //Es gibt zwei mögliche Vorgänger:
-                //1. Job-Vorgänger
-                //2. Maschinen-Vorgänger
-                //
-                //Diese Methoden aus ScheduleOrderHelper liefern
-                //die entsprechenden Vorgänger zurück.
-                Operation jobPredecessor =
-                    ScheduleOrderHelper.GetJobPredecessor(instance, current);
-
-                Operation machinePredecessor =
-                    ScheduleOrderHelper.GetMachinePredecessor(machineOrders, current);
-
-                //valueFromJob beschreibt,
-                //wie stark der Job-Vorgänger den Start
-                //der aktuellen Operation beeinflusst hat.
-                //
-                //-1 bedeutet:
-                //Es existiert kein Vorgänger.
-                int valueFromJob = -1;
-
-                //Falls ein Job-Vorgänger existiert,
-                //verwenden wir dessen Endzeit.
-                if (jobPredecessor != null)
-                    valueFromJob = jobPredecessor.endTime;
-
-                //valueFromMachine beschreibt,
-                //wie stark der Maschinen-Vorgänger den Start
-                //der aktuellen Operation beeinflusst hat.
-                int valueFromMachine = -1;
-
-                if (machinePredecessor != null)
-                {
-                    //Beim Maschinen-Vorgänger müssen zusätzlich
-                    //die Setupzeiten berücksichtigt werden.
-                    int setup =
-                        instance.setupTimes[machinePredecessor.jobID - 1,
-                                            current.jobID - 1];
-
-                    valueFromMachine =
-                        machinePredecessor.endTime + setup;
-                }
-
-                //Wenn weder ein Job- noch ein Maschinen-Vorgänger existiert,
-                //haben wir den Anfang des kritischen Pfades erreicht.
-                if (jobPredecessor == null && machinePredecessor == null)
-                    break;
-
-                //Wir folgen dem Vorgänger,
-                //der den größeren Einfluss auf den Startzeitpunkt hatte.
-                //
-                //Falls beide gleich groß sind,
-                //bevorzugen wir den Maschinen-Vorgänger,
-                //da unsere Neighborhood auf Maschinenkonflikten basiert.
-                if (machinePredecessor != null &&
-                    valueFromMachine >= valueFromJob)
-                {
-                    current = machinePredecessor;
-                }
-                else if (jobPredecessor != null)
-                {
-                    current = jobPredecessor;
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            //Da wir den Pfad rückwärts aufgebaut haben,
-            //müssen wir die Reihenfolge jetzt umdrehen.
-            criticalPathBackwards.Reverse();
-
-            return criticalPathBackwards;
+            this.from = from;
+            this.to = to;
+            this.setup = setup;
         }
+    }
 
-        //Nachdem wir den kritischen Pfad gefunden haben,
-        //können wir daraus die kritischen Blöcke extrahieren.
+    // Hauptmethode:
+    // berechnet den kritischen Pfad
+    //
+    // Übergabe:
+    // - Instanz
+    // - aktuelle Maschinenreihenfolge
+    public static List<Operation> FindCriticalPath(
+        Instance instance,
+        Dictionary<int, List<Operation>> machineOrders)
+    {
+        // Alle Operationen aller Jobs sammeln
+        List<Operation> allOperations =
+            instance.jobs
+            .SelectMany(job => job.operations)
+            .ToList();
+
+        // Nachfolgergraph erzeugen
         //
-        //Ein kritischer Block ist eine zusammenhängende Sequenz
-        //von Operationen derselben Maschine,
-        //die alle auf dem kritischen Pfad liegen.
-        public static List<CriticalBlock> ExtractCriticalBlocks(
-            List<Operation> criticalPath)
+        // successors[operation]
+        // enthält alle Nachfolgerkanten
+        Dictionary<Operation, List<Edge>> successors =
+            CreateSuccessorGraph(
+                instance,
+                machineOrders,
+                allOperations);
+
+        // Vorgängergraph erzeugen
+        //
+        // einfach inverse Richtung
+        Dictionary<Operation, List<Edge>> predecessors =
+            CreatePredecessorGraph(
+                allOperations,
+                successors);
+
+        // Topologische Reihenfolge erzeugen
+        //
+        // Jede Operation erscheint erst
+        // nach ihren Vorgängern.
+        List<Operation> topologicalOrder =
+            CreateTopologicalOrder(
+                allOperations,
+                predecessors,
+                successors);
+
+        // Sicherheitsprüfung:
+        // Wenn nicht alle Operationen enthalten sind,
+        // existiert ein Zyklus.
+        if (topologicalOrder.Count != allOperations.Count)
         {
-            //Liste aller kritischen Blöcke,
-            //die später zurückgegeben wird.
-            List<CriticalBlock> blocks =
-                new List<CriticalBlock>();
+            Console.WriteLine(
+                "No critical path found. Machine order may contain a cycle.");
 
-            //Falls der kritische Pfad leer ist,
-            //existieren auch keine kritischen Blöcke.
-            if (criticalPath.Count == 0)
-                return blocks;
+            return new List<Operation>();
+        }
 
-            //currentBlock speichert den aktuellen Block,
-            //den wir gerade aufbauen.
-            //
-            //Wir starten mit der Maschine
-            //der ersten Operation des kritischen Pfades.
-            CriticalBlock currentBlock =
-                new CriticalBlock(criticalPath[0].machine);
+        // Vorwärtsrechnung:
+        // r_i berechnen
+        //
+        // r_i =
+        // frühestmöglicher Startzeitpunkt
+        Dictionary<Operation, int> r =
+            CalculateReleaseDates(
+                topologicalOrder,
+                predecessors);
 
-            //Die erste Operation gehört definitiv
-            //zum ersten kritischen Block.
-            currentBlock.operations.Add(criticalPath[0]);
+        // Rückwärtsrechnung:
+        // q_i berechnen
+        //
+        // q_i =
+        // längster Restpfad bis zum Ende
+        Dictionary<Operation, int> q =
+            CalculateTails(
+                topologicalOrder,
+                successors);
 
-            //Nun laufen wir durch die restlichen Operationen
-            //des kritischen Pfades.
-            for (int i = 1; i < criticalPath.Count; i++)
+        // Makespan bestimmen
+        //
+        // r_i + q_i entspricht
+        // der Gesamtlänge des Pfades über diese Operation
+        int cmax =
+            allOperations.Max(
+                op => r[op] + q[op]);
+
+        // Kritische Operationen bestimmen
+        //
+        // Eine Operation ist kritisch,
+        // wenn:
+        //
+        // r_i + q_i == Cmax
+        List<Operation> criticalOperations =
+            allOperations
+            .Where(
+                op => r[op] + q[op] == cmax)
+            .OrderBy(
+                op => r[op])
+            .ToList();
+
+        // Sicherheitsprüfung
+        if (criticalOperations.Count == 0)
+        {
+            Console.WriteLine(
+                "No critical operations found.");
+
+            return new List<Operation>();
+        }
+
+        // Einen konkreten kritischen Pfad erzeugen
+        //
+        // Die kritischen Operationen müssen
+        // korrekt verbunden werden.
+        List<Operation> criticalPath =
+            BuildOneCriticalPath(
+                criticalOperations,
+                successors,
+                r,
+                q,
+                cmax);
+
+        // Sicherheitsprüfung
+        if (criticalPath == null
+            || criticalPath.Count == 0)
+        {
+            Console.WriteLine(
+                "No critical path found.");
+
+            return new List<Operation>();
+        }
+
+        return criticalPath;
+    }
+
+    // Erstellt den Nachfolgergraphen
+    //
+    // Der Graph enthält:
+    // - Job-Kanten
+    // - Maschinen-Kanten
+    private static Dictionary<Operation, List<Edge>>
+        CreateSuccessorGraph(
+            Instance instance,
+            Dictionary<int, List<Operation>> machineOrders,
+            List<Operation> allOperations)
+    {
+        Dictionary<Operation, List<Edge>> successors =
+            new Dictionary<Operation, List<Edge>>();
+
+        // Für jede Operation Liste erzeugen
+        foreach (Operation operation in allOperations)
+        {
+            successors[operation] =
+                new List<Edge>();
+        }
+
+        // -------------------------------------------------
+        // JOB-KANTEN
+        // -------------------------------------------------
+        //
+        // Beispiel:
+        //
+        // O11 -> O12 -> O13
+        //
+        // Jede Operation eines Jobs
+        // zeigt auf die nächste.
+        foreach (Job job in instance.jobs)
+        {
+            for (int i = 0;
+                i < job.operations.Count - 1;
+                i++)
             {
-                Operation operation = criticalPath[i];
+                Operation before =
+                    job.operations[i];
 
-                //Falls die aktuelle Operation
-                //auf derselben Maschine liegt,
-                //gehört sie zum aktuellen Block.
-                if (operation.machine == currentBlock.machine)
+                Operation after =
+                    job.operations[i + 1];
+
+                successors[before].Add(
+                    new Edge(
+                        before,
+                        after,
+                        0));
+            }
+        }
+
+        // -------------------------------------------------
+        // MASCHINEN-KANTEN
+        // -------------------------------------------------
+        //
+        // Die Reihenfolge stammt
+        // aus machineOrders.
+        //
+        // Beispiel:
+        //
+        // Maschine 2:
+        // O31 -> O12 -> O23
+        //
+        // erzeugt:
+        //
+        // O31 -> O12
+        // O12 -> O23
+        foreach (var pair in machineOrders)
+        {
+            List<Operation> operationsOnMachine =
+                pair.Value;
+
+            for (int i = 0;
+                i < operationsOnMachine.Count - 1;
+                i++)
+            {
+                Operation before =
+                    operationsOnMachine[i];
+
+                Operation after =
+                    operationsOnMachine[i + 1];
+
+                // Setupzeit zwischen den Jobs
+                int setup =
+                    instance.setupTimes[
+                        before.jobID - 1,
+                        after.jobID - 1];
+
+                successors[before].Add(
+                    new Edge(
+                        before,
+                        after,
+                        setup));
+            }
+        }
+
+        return successors;
+    }
+
+    // Erstellt Vorgängergraphen
+    //
+    // Dreht alle Kanten um.
+    private static Dictionary<Operation, List<Edge>>
+        CreatePredecessorGraph(
+            List<Operation> allOperations,
+            Dictionary<Operation, List<Edge>> successors)
+    {
+        Dictionary<Operation, List<Edge>> predecessors =
+            new Dictionary<Operation, List<Edge>>();
+
+        foreach (Operation operation in allOperations)
+        {
+            predecessors[operation] =
+                new List<Edge>();
+        }
+
+        // Alle Kanten umdrehen
+        foreach (var pair in successors)
+        {
+            foreach (Edge edge in pair.Value)
+            {
+                predecessors[edge.to]
+                    .Add(edge);
+            }
+        }
+
+        return predecessors;
+    }
+
+    // Topologische Sortierung
+    //
+    // Erzeugt eine Reihenfolge,
+    // in der Vorgänger immer
+    // zuerst kommen.
+    private static List<Operation>
+        CreateTopologicalOrder(
+            List<Operation> allOperations,
+            Dictionary<Operation, List<Edge>> predecessors,
+            Dictionary<Operation, List<Edge>> successors)
+    {
+        // Anzahl offener Vorgänger
+        Dictionary<Operation, int>
+            remainingPredecessors =
+            allOperations.ToDictionary(
+                op => op,
+                op => predecessors[op].Count);
+
+        // Startoperationen:
+        // keine Vorgänger
+        Queue<Operation> readyOperations =
+            new Queue<Operation>(
+                allOperations.Where(
+                    op =>
+                        remainingPredecessors[op] == 0));
+
+        List<Operation> order =
+            new List<Operation>();
+
+        while (readyOperations.Count > 0)
+        {
+            Operation current =
+                readyOperations.Dequeue();
+
+            order.Add(current);
+
+            // Nachfolger bearbeiten
+            foreach (Edge edge in successors[current])
+            {
+                remainingPredecessors[edge.to]--;
+
+                // Wenn keine offenen Vorgänger mehr:
+                // Operation freigeben
+                if (remainingPredecessors[edge.to] == 0)
                 {
-                    currentBlock.operations.Add(operation);
-                }
-                else
-                {
-                    //Falls die Maschine wechselt,
-                    //ist der aktuelle Block abgeschlossen.
-                    //
-                    //Wir speichern nur Blöcke,
-                    //die mindestens zwei Operationen besitzen,
-                    //da nur dort ein Swap sinnvoll ist.
-                    if (currentBlock.operations.Count >= 2)
-                        blocks.Add(currentBlock);
-
-                    //Jetzt starten wir einen neuen Block
-                    //für die neue Maschine.
-                    currentBlock =
-                        new CriticalBlock(operation.machine);
-
-                    //Die aktuelle Operation gehört sofort
-                    //zum neuen Block.
-                    currentBlock.operations.Add(operation);
+                    readyOperations.Enqueue(
+                        edge.to);
                 }
             }
-
-            //Nachdem alle Operationen verarbeitet wurden,
-            //müssen wir den letzten Block separat prüfen.
-            //
-            //Der letzte Block wird nicht automatisch gespeichert,
-            //weil danach kein Maschinenwechsel mehr kommt.
-            if (currentBlock.operations.Count >= 2)
-                blocks.Add(currentBlock);
-
-            return blocks;
         }
+
+        return order;
+    }
+
+    // -------------------------------------------------
+    // VORWÄRTSRECHNUNG
+    // -------------------------------------------------
+    //
+    // Berechnet r_i
+    //
+    // r_i =
+    // frühestmöglicher Startzeitpunkt
+    private static Dictionary<Operation, int>
+        CalculateReleaseDates(
+            List<Operation> topologicalOrder,
+            Dictionary<Operation, List<Edge>> predecessors)
+    {
+        // Dictionary für r_i erzeugen
+        Dictionary<Operation, int> r =
+            topologicalOrder.ToDictionary(
+                op => op,
+                op => 0);
+
+        // Operationen in topologischer Reihenfolge
+        // durchlaufen
+        foreach (Operation operation in topologicalOrder)
+        {
+            // maximalen Vorgänger-Endzeitpunkt speichern
+            int maxValue = 0;
+
+            // Alle Vorgänger betrachten
+            foreach (Edge edge in predecessors[operation])
+            {
+                // Kandidat berechnen:
+                //
+                // r[vorgänger]
+                // + Bearbeitungszeit
+                // + Setupzeit
+                int candidate =
+                    r[edge.from]
+                    + edge.from.processingTime
+                    + edge.setup;
+
+                // Maximum bestimmen
+                maxValue =
+                    Math.Max(
+                        maxValue,
+                        candidate);
+            }
+
+            // Frühesten Start speichern
+            r[operation] = maxValue;
+        }
+
+        return r;
+    }
+
+    // -------------------------------------------------
+    // RÜCKWÄRTSRECHNUNG
+    // -------------------------------------------------
+    //
+    // Berechnet q_i
+    //
+    // q_i =
+    // längster Restpfad bis Projektende
+    private static Dictionary<Operation, int>
+        CalculateTails(
+            List<Operation> topologicalOrder,
+            Dictionary<Operation, List<Edge>> successors)
+    {
+        // q_i initialisieren
+        //
+        // mindestens eigene Bearbeitungszeit
+        Dictionary<Operation, int> q =
+            topologicalOrder.ToDictionary(
+                op => op,
+                op => op.processingTime);
+
+        // Rückwärts durch die Reihenfolge laufen
+        for (int i = topologicalOrder.Count - 1;
+            i >= 0;
+            i--)
+        {
+            Operation operation =
+                topologicalOrder[i];
+
+            int maxSuccessorTail = 0;
+
+            // Nachfolger betrachten
+            foreach (Edge edge in successors[operation])
+            {
+                // Kandidat berechnen:
+                //
+                // Setupzeit
+                // + q[nachfolger]
+                int candidate =
+                    edge.setup
+                    + q[edge.to];
+
+                maxSuccessorTail =
+                    Math.Max(
+                        maxSuccessorTail,
+                        candidate);
+            }
+
+            // q_i berechnen
+            q[operation] =
+                operation.processingTime
+                + maxSuccessorTail;
+        }
+
+        return q;
+    }
+
+    // Baut einen konkreten kritischen Pfad
+    //
+    // Verbindet kritische Operationen
+    // korrekt entlang der Kanten.
+    private static List<Operation>
+        BuildOneCriticalPath(
+            List<Operation> criticalOperations,
+            Dictionary<Operation, List<Edge>> successors,
+            Dictionary<Operation, int> r,
+            Dictionary<Operation, int> q,
+            int cmax)
+    {
+        // Erste kritische Operation
+        Operation current =
+            criticalOperations
+            .OrderBy(op => r[op])
+            .First();
+
+        List<Operation> path =
+            new List<Operation>();
+
+        path.Add(current);
+
+        while (true)
+        {
+            // Kritischen Nachfolger suchen
+            Edge nextEdge =
+                successors[current]
+                .Where(edge =>
+
+                    // Nachfolger ebenfalls kritisch
+                    r[edge.to]
+                    + q[edge.to]
+                    == cmax
+
+                    &&
+
+                    // zeitlich direkt verbunden
+                    r[edge.to]
+                    ==
+                    r[current]
+                    + current.processingTime
+                    + edge.setup)
+
+                .OrderBy(edge => r[edge.to])
+                .FirstOrDefault();
+
+            // Kein Nachfolger mehr:
+            // Ende erreicht
+            if (nextEdge == null)
+                break;
+
+            current = nextEdge.to;
+
+            path.Add(current);
+        }
+
+        return path;
+    }
+
+    // Extrahiert kritische Blöcke
+    //
+    // Kritische Blöcke:
+    // mehrere kritische Operationen
+    // direkt hintereinander
+    // auf derselben Maschine
+    public static List<CriticalBlock>
+        ExtractCriticalBlocks(
+            List<Operation> criticalPath)
+    {
+        List<CriticalBlock> blocks =
+            new List<CriticalBlock>();
+
+        if (criticalPath.Count == 0)
+            return blocks;
+
+        // Ersten Block starten
+        CriticalBlock currentBlock =
+            new CriticalBlock(
+                criticalPath[0].machine);
+
+        currentBlock.operations
+            .Add(criticalPath[0]);
+
+        // Durch kritischen Pfad laufen
+        for (int i = 1;
+            i < criticalPath.Count;
+            i++)
+        {
+            Operation operation =
+                criticalPath[i];
+
+            // gleiche Maschine:
+            // zum aktuellen Block hinzufügen
+            if (operation.machine
+                ==
+                currentBlock.machine)
+            {
+                currentBlock.operations
+                    .Add(operation);
+            }
+            else
+            {
+                // nur echte Blöcke speichern
+                if (currentBlock.operations.Count >= 2)
+                {
+                    blocks.Add(currentBlock);
+                }
+
+                // neuen Block starten
+                currentBlock =
+                    new CriticalBlock(
+                        operation.machine);
+
+                currentBlock.operations
+                    .Add(operation);
+            }
+        }
+
+        // letzten Block speichern
+        if (currentBlock.operations.Count >= 2)
+        {
+            blocks.Add(currentBlock);
+        }
+
+        return blocks;
     }
 }
