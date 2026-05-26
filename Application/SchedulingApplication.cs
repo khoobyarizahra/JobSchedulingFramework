@@ -1,6 +1,7 @@
 ﻿using JobShopSchedulingFramework.Data;
 using JobShopSchedulingFramework.DataGeneration;
 using JobShopSchedulingFramework.Evaluation;
+using JobShopSchedulingFramework.Heuristics.Tabu;
 using JobShopSchedulingFramework.Models;
 using JobShopSchedulingFramework.Visualisation;
 using System;
@@ -31,7 +32,7 @@ namespace JobShopSchedulingFramework.Application
         {
             Console.WriteLine("=======================================");
             Console.WriteLine(" JOB SHOP SCHEDULING PROJECT");
-            Console.WriteLine(" Giffler-Thompson Initial Heuristic");
+            Console.WriteLine(" Giffler-Thompson + Tabu Search");
             Console.WriteLine("=======================================");
             Console.WriteLine();
         }
@@ -81,6 +82,8 @@ namespace JobShopSchedulingFramework.Application
             InitialHeuristicResult result =
                 HeuristicExperiment.Run(fileName);
 
+            RunTabuSearchExperiment(result);
+
             string outputPath =
                 @"Visualisation\Output\gantt_chart.html";
 
@@ -102,6 +105,46 @@ namespace JobShopSchedulingFramework.Application
                 FileName = fullPath,
                 UseShellExecute = true
             });
+        }
+
+        private static void RunTabuSearchExperiment(InitialHeuristicResult result)
+        {
+            Console.WriteLine();
+            Console.WriteLine("=======================================");
+            Console.WriteLine(" TABU SEARCH EXPERIMENT");
+            Console.WriteLine("=======================================");
+
+            int initialCmax = result.bestCmax;
+
+            Console.WriteLine("Initial best rule: " + result.bestRule);
+            Console.WriteLine("Initial Cmax: " + initialCmax);
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            TabuSearchSolver tabuSearch =
+                new TabuSearchSolver(
+                    maxIterations: 100,
+                    tabuTenure: 10);
+
+            int tabuCmax =
+                tabuSearch.Run(result.bestInstance);
+
+            stopwatch.Stop();
+
+            int improvement = initialCmax - tabuCmax;
+
+            double improvementPercent =
+                initialCmax > 0
+                    ? (double)improvement / initialCmax * 100.0
+                    : 0.0;
+
+            Console.WriteLine();
+            Console.WriteLine("TABU SEARCH RESULT");
+            Console.WriteLine("Initial Cmax: " + initialCmax);
+            Console.WriteLine("Tabu Cmax: " + tabuCmax);
+            Console.WriteLine("Improvement: " + improvement);
+            Console.WriteLine("Improvement %: " + improvementPercent.ToString("F2") + "%");
+            Console.WriteLine("Runtime ms: " + stopwatch.ElapsedMilliseconds);
         }
     }
 }

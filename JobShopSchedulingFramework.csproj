@@ -15,10 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Heuristics\Neighborhoods\CriticalPathFinder.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Update="Instances\Benchmark\ExampleInstanceMedium.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -55,10 +51,6 @@
     <None Update="Instances\generated\MediumInstance_5.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Heuristics\Neighborhoods\" />
   </ItemGroup>
 
 </Project>
