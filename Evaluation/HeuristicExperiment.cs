@@ -58,7 +58,7 @@ namespace JobShopSchedulingFramework.Evaluation
                  Reload the instance for every rule.
 
                  Important:
-                 Scheduling changes operation start/end times.
+                 Scheduling changes Operation start/end times.
                  Therefore each priority rule needs a fresh instance.
                 */
                 Instance instance =

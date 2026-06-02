@@ -1,7 +1,4 @@
 ﻿using JobShopSchedulingFramework.Models;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 //INSTANCE READER Liest die Instanz aus einer Datei ein.
 
@@ -21,14 +18,14 @@ namespace JobShopSchedulingFramework.Data
 
             // Anzahl Jobs und Maschinen
             string[] meta = lines[line].Split(',');
-            instance.numJobs = int.Parse(meta[0]);
-            instance.numMachines = int.Parse(meta[1]);
+            instance.NumJobs = int.Parse(meta[0]);
+            instance.NumMachines = int.Parse(meta[1]);
             line++;
 
             line++; // Skip "#Processing times"
 
             // Jobs und Operationen einlesen
-            for (int jobID = 1; jobID <= instance.numJobs; jobID++)
+            for (int jobID = 1; jobID <= instance.NumJobs; jobID++)
             {
                 string[] values = lines[line].Split(',');
                 Job job = new Job(jobID);
@@ -41,27 +38,27 @@ namespace JobShopSchedulingFramework.Data
                     int machine = int.Parse(values[valueIndex]);
                     int processingTime = int.Parse(values[valueIndex + 1]);
 
-                    job.operations.Add(new Operation(jobID, opID, machine, processingTime));
+                    job.Operations.Add(new Operation(jobID, opID, machine, processingTime));
 
                     valueIndex += 2;
                 }
 
-                instance.jobs.Add(job);
+                instance.Jobs.Add(job);
                 line++;
             }
 
             line++; // Skip "#Setup times"
 
-            instance.setupTimes = new int[instance.numJobs, instance.numJobs];
+            instance.SetupTimes = new int[instance.NumJobs, instance.NumJobs];
 
             // Setup-Matrix einlesen
-            for (int i = 0; i < instance.numJobs; i++)
+            for (int i = 0; i < instance.NumJobs; i++)
             {
                 string[] row = lines[line].Split(',');
 
-                for (int j = 0; j < instance.numJobs; j++)
+                for (int j = 0; j < instance.NumJobs; j++)
                 {
-                    instance.setupTimes[i, j] = int.Parse(row[j]);
+                    instance.SetupTimes[i, j] = int.Parse(row[j]);
                 }
 
                 line++;

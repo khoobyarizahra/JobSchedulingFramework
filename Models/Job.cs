@@ -10,13 +10,13 @@ namespace JobShopSchedulingFramework.Models
 {
     public class Job
     {
-        public int jobID;
-        public List<Operation> operations;
+        public int JobID { get; }
+        public List<Operation> Operations { get; set; }
 
         public Job(int jobID)
         {
-            this.jobID = jobID;
-            this.operations = new List<Operation>();
+            this.JobID = jobID;
+            this.Operations = new List<Operation>();
         }
     }
 

@@ -1,12 +1,12 @@
 ﻿using JobShopSchedulingFramework.Data;
 using JobShopSchedulingFramework.DataGeneration;
 using JobShopSchedulingFramework.Evaluation;
-using JobShopSchedulingFramework.Heuristics.Tabu;
+using JobShopSchedulingFramework.ExactSolvers;
+using JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core;
+using JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighborhoods;
 using JobShopSchedulingFramework.Models;
 using JobShopSchedulingFramework.Visualisation;
-using System;
 using System.Diagnostics;
-using System.IO;
 
 namespace JobShopSchedulingFramework.Application
 {
@@ -18,8 +18,17 @@ namespace JobShopSchedulingFramework.Application
 
             GenerateControlledInstances();
 
+            Console.WriteLine("Instance selection starts now.");
+            Console.WriteLine();
+
             string fileName =
-                @"Instances\Generated\SetupHeavy_10x5_seed43.txt";
+                InstanceFileSelector.SelectFromFolder(
+                    @"Instances\Generated");
+
+            Console.WriteLine();
+            Console.WriteLine("You selected:");
+            Console.WriteLine(fileName);
+            Console.WriteLine();
 
             RunHeuristicExperiment(fileName);
 
@@ -32,7 +41,7 @@ namespace JobShopSchedulingFramework.Application
         {
             Console.WriteLine("=======================================");
             Console.WriteLine(" JOB SHOP SCHEDULING PROJECT");
-            Console.WriteLine(" Giffler-Thompson + Tabu Search");
+            Console.WriteLine(" Giffler-Thompson + Tabu Search + CP");
             Console.WriteLine("=======================================");
             Console.WriteLine();
         }
@@ -41,8 +50,8 @@ namespace JobShopSchedulingFramework.Application
         {
             int numberOfJobs = 10;
             int numberOfMachines = 5;
+            InstanceType type = InstanceType.Normal;
 
-            InstanceType type = InstanceType.SetupHeavy;
             int baseSeed = 42;
             int numberOfInstances = 5;
 
@@ -82,7 +91,18 @@ namespace JobShopSchedulingFramework.Application
             InitialHeuristicResult result =
                 HeuristicExperiment.Run(fileName);
 
-            RunTabuSearchExperiment(result);
+            int bestTabuCmax =
+                RunTabuNeighborhoodExperiment(result);
+
+            int cpCmax =
+                CpSolverRunner.Run(
+                    CloneInstance(result.bestInstance),
+                    timeLimitSeconds: 90);
+
+            CpSolverRunner.PrintComparison(
+                result.bestCmax,
+                bestTabuCmax,
+                cpCmax);
 
             string outputPath =
                 @"Visualisation\Output\gantt_chart.html";
@@ -98,7 +118,8 @@ namespace JobShopSchedulingFramework.Application
             Console.WriteLine("Gantt chart created:");
             Console.WriteLine(outputPath);
 
-            string fullPath = Path.GetFullPath(outputPath);
+            string fullPath =
+                Path.GetFullPath(outputPath);
 
             Process.Start(new ProcessStartInfo
             {
@@ -107,44 +128,170 @@ namespace JobShopSchedulingFramework.Application
             });
         }
 
-        private static void RunTabuSearchExperiment(InitialHeuristicResult result)
+        private static int RunTabuNeighborhoodExperiment(
+            InitialHeuristicResult result)
         {
             Console.WriteLine();
             Console.WriteLine("=======================================");
-            Console.WriteLine(" TABU SEARCH EXPERIMENT");
+            Console.WriteLine(" TABU NEIGHBORHOOD EXPERIMENT");
             Console.WriteLine("=======================================");
 
-            int initialCmax = result.bestCmax;
+            int initialCmax =
+                result.bestCmax;
 
             Console.WriteLine("Initial best rule: " + result.bestRule);
             Console.WriteLine("Initial Cmax: " + initialCmax);
-
-            Stopwatch stopwatch = Stopwatch.StartNew();
-
-            TabuSearchSolver tabuSearch =
-                new TabuSearchSolver(
-                    maxIterations: 100,
-                    tabuTenure: 10);
-
-            int tabuCmax =
-                tabuSearch.Run(result.bestInstance);
-
-            stopwatch.Stop();
-
-            int improvement = initialCmax - tabuCmax;
-
-            double improvementPercent =
-                initialCmax > 0
-                    ? (double)improvement / initialCmax * 100.0
-                    : 0.0;
-
             Console.WriteLine();
-            Console.WriteLine("TABU SEARCH RESULT");
-            Console.WriteLine("Initial Cmax: " + initialCmax);
-            Console.WriteLine("Tabu Cmax: " + tabuCmax);
-            Console.WriteLine("Improvement: " + improvement);
-            Console.WriteLine("Improvement %: " + improvementPercent.ToString("F2") + "%");
-            Console.WriteLine("Runtime ms: " + stopwatch.ElapsedMilliseconds);
+
+            int maxIterations =
+                100;
+
+            List<(string Name, INeighborhoodDefinition Neighborhood)> neighborhoods =
+            new List<(string Name, INeighborhoodDefinition Neighborhood)>
+            {
+                ("N1 - Adjacent Critical Block Swaps", new AdjacentSwapNeighborhood()),
+                ("N2 - Restricted First/Last Block Swaps", new RestrictedBlockSwapNeighborhood()),
+                ("N3 - All Pair Critical Block Swaps", new AllPairSwapNeighborhood()),
+                ("N4 - Setup-Heavy Machine Neighborhood", new SetupHeavyMachineNeighborhood())
+            };
+
+            Console.WriteLine(
+                "Neighborhood".PadRight(40) + " | " +
+                "Cmax".PadRight(8) + " | " +
+                "Improve".PadRight(10) + " | " +
+                "Improve %".PadRight(12) + " | " +
+                "Runtime ms");
+
+            Console.WriteLine(new string('-', 95));
+
+            string bestNeighborhoodName =
+                "";
+
+            int bestTabuCmax =
+                int.MaxValue;
+
+            long bestRuntime =
+                0;
+
+            foreach (var item in neighborhoods)
+            {
+                Instance instanceCopy =
+                    CloneInstance(result.bestInstance);
+
+                Stopwatch stopwatch =
+                    Stopwatch.StartNew();
+
+                TabuSearchSolver tabuSearch =
+                new TabuSearchSolver(
+                maxIterations: maxIterations,
+                neighborhoodDefinition: item.Neighborhood);
+
+                int tabuCmax =
+                    tabuSearch.Run(instanceCopy);
+
+                stopwatch.Stop();
+
+                int improvement =
+                    initialCmax - tabuCmax;
+
+                double improvementPercent =
+                    initialCmax > 0
+                        ? (double)improvement / initialCmax * 100.0
+                        : 0.0;
+
+                Console.WriteLine(
+                    item.Name.PadRight(40) + " | " +
+                    tabuCmax.ToString().PadRight(8) + " | " +
+                    improvement.ToString().PadRight(10) + " | " +
+                    (improvementPercent.ToString("F2") + "%").PadRight(12) + " | " +
+                    stopwatch.ElapsedMilliseconds);
+
+                if (tabuCmax < bestTabuCmax)
+                {
+                    bestTabuCmax =
+                        tabuCmax;
+
+                    bestNeighborhoodName =
+                        item.Name;
+
+                    bestRuntime =
+                        stopwatch.ElapsedMilliseconds;
+                }
+            }
+
+            Console.WriteLine(new string('-', 95));
+            Console.WriteLine("Best neighborhood: " + bestNeighborhoodName);
+            Console.WriteLine("Best Tabu Cmax: " + bestTabuCmax);
+            Console.WriteLine("Best runtime ms: " + bestRuntime);
+
+            return bestTabuCmax;
+        }
+
+        private static Instance CloneInstance(
+            Instance original)
+        {
+            Instance clone =
+                new Instance();
+
+            clone.NumJobs =
+                original.NumJobs;
+
+            clone.NumMachines =
+                original.NumMachines;
+
+            foreach (Job originalJob in original.Jobs)
+            {
+                Job clonedJob =
+                    new Job(originalJob.JobID);
+
+                foreach (Operation originalOperation in originalJob.Operations)
+                {
+                    Operation clonedOperation =
+                        new Operation(
+                            originalOperation.JobID,
+                            originalOperation.OperationID,
+                            originalOperation.Machine,
+                            originalOperation.ProcessingTime);
+
+                    clonedOperation.StartTime =
+                        originalOperation.StartTime;
+
+                    clonedOperation.EndTime =
+                        originalOperation.EndTime;
+
+                    clonedOperation.remainingProcessingTime =
+                        originalOperation.remainingProcessingTime;
+
+                    clonedJob.Operations.Add(
+                        clonedOperation);
+                }
+
+                clone.Jobs.Add(
+                    clonedJob);
+            }
+
+            if (original.SetupTimes != null)
+            {
+                int rows =
+                    original.SetupTimes.GetLength(0);
+
+                int columns =
+                    original.SetupTimes.GetLength(1);
+
+                clone.SetupTimes =
+                    new int[rows, columns];
+
+                for (int i = 0; i < rows; i++)
+                {
+                    for (int j = 0; j < columns; j++)
+                    {
+                        clone.SetupTimes[i, j] =
+                            original.SetupTimes[i, j];
+                    }
+                }
+            }
+
+            return clone;
         }
     }
 }

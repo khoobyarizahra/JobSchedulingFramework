@@ -28,14 +28,14 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
 
         public static void CalculateRemainingProcessingTimes(Instance instance)
         {
-            foreach (Job job in instance.jobs)
+            foreach (Job job in instance.Jobs)
             {
                 int sum = 0;
 
-                for (int i = job.operations.Count - 1; i >= 0; i--)
+                for (int i = job.Operations.Count - 1; i >= 0; i--)
                 {
-                    sum += job.operations[i].processingTime;
-                    job.operations[i].remainingProcessingTime = sum;
+                    sum += job.Operations[i].ProcessingTime;
+                    job.Operations[i].remainingProcessingTime = sum;
                 }
             }
         }
@@ -43,12 +43,12 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
         //Setup-Zeit bestimmen: abhängig vom vorherigen Job auf dieser Maschine
         private static int GetSetupTime(Instance instance, int[] lastJobOnMachine, Operation op)
         {
-            int previousJob = lastJobOnMachine[op.machine];
+            int previousJob = lastJobOnMachine[op.Machine];
 
             if (previousJob == 0)
                 return 0;
 
-            return instance.setupTimes[previousJob - 1, op.jobID - 1];
+            return instance.SetupTimes[previousJob - 1, op.JobID - 1];
         }
 
         /*
@@ -68,12 +68,12 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
 
             if (rule == PriorityRule.LPT)
             {
-                return conflictSet.OrderByDescending(op => op.processingTime).First();
+                return conflictSet.OrderByDescending(op => op.ProcessingTime).First();
             }
 
             if (rule == PriorityRule.SPT)
             {
-                return conflictSet.OrderBy(op => op.processingTime).First();
+                return conflictSet.OrderBy(op => op.ProcessingTime).First();
             }
 
             if (rule == PriorityRule.SRPT)
@@ -104,15 +104,15 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
         //Giffler-Thompson Algorithmus
         public static void CreateInitialSchedule(Instance instance, PriorityRule rule)
         {
-            int[] nextOperationReadyTime = new int[instance.numJobs + 1];
-            int[] machineReadyTime = new int[instance.numMachines + 1];
-            int[] lastJobOnMachine = new int[instance.numMachines + 1];
-            int[] nextOperation = new int[instance.numJobs + 1];
+            int[] nextOperationReadyTime = new int[instance.NumJobs + 1];
+            int[] machineReadyTime = new int[instance.NumMachines + 1];
+            int[] lastJobOnMachine = new int[instance.NumMachines + 1];
+            int[] nextOperation = new int[instance.NumJobs + 1];
 
-            for (int j = 1; j <= instance.numJobs; j++)
+            for (int j = 1; j <= instance.NumJobs; j++)
                 nextOperation[j] = 1;
 
-            int totalOperations = instance.jobs.Sum(job => job.operations.Count);
+            int totalOperations = instance.Jobs.Sum(job => job.Operations.Count);
             int scheduledOperations = 0;
 
             while (scheduledOperations < totalOperations)
@@ -124,25 +124,25 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
                   Schritt 1:
                   Finde früheste Fertigstellungszeit C*
                  */
-                foreach (Job job in instance.jobs)
+                foreach (Job job in instance.Jobs)
                 {
-                    if (nextOperation[job.jobID] <= job.operations.Count)
+                    if (nextOperation[job.JobID] <= job.Operations.Count)
                     {
-                        Operation op = job.operations[nextOperation[job.jobID] - 1];
+                        Operation op = job.Operations[nextOperation[job.JobID] - 1];
 
                         int setup = GetSetupTime(instance, lastJobOnMachine, op);
 
                         int start = Math.Max(
-                            nextOperationReadyTime[op.jobID],
-                            machineReadyTime[op.machine] + setup
+                            nextOperationReadyTime[op.JobID],
+                            machineReadyTime[op.Machine] + setup
                         );
 
-                        int completion = start + op.processingTime;
+                        int completion = start + op.ProcessingTime;
 
                         if (completion < cStar)
                         {
                             cStar = completion;
-                            selectedMachine = op.machine;
+                            selectedMachine = op.Machine;
                         }
                     }
                 }
@@ -153,20 +153,20 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
                  */
                 List<Operation> conflictSet = new List<Operation>();
 
-                foreach (Job job in instance.jobs)
+                foreach (Job job in instance.Jobs)
                 {
-                    if (nextOperation[job.jobID] <= job.operations.Count)
+                    if (nextOperation[job.JobID] <= job.Operations.Count)
                     {
-                        Operation op = job.operations[nextOperation[job.jobID] - 1];
+                        Operation op = job.Operations[nextOperation[job.JobID] - 1];
 
                         int setup = GetSetupTime(instance, lastJobOnMachine, op);
 
                         int start = Math.Max(
-                            nextOperationReadyTime[op.jobID],
-                            machineReadyTime[op.machine] + setup
+                            nextOperationReadyTime[op.JobID],
+                            machineReadyTime[op.Machine] + setup
                         );
 
-                        if (op.machine == selectedMachine && start < cStar)
+                        if (op.Machine == selectedMachine && start < cStar)
                             conflictSet.Add(op);
                     }
                 }
@@ -181,20 +181,20 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
                 int setupSelected = GetSetupTime(instance, lastJobOnMachine, selected);
 
                 int startTime = Math.Max(
-                    nextOperationReadyTime[selected.jobID],
-                    machineReadyTime[selected.machine] + setupSelected
+                    nextOperationReadyTime[selected.JobID],
+                    machineReadyTime[selected.Machine] + setupSelected
                 );
 
-                int endTime = startTime + selected.processingTime;
+                int endTime = startTime + selected.ProcessingTime;
 
-                selected.startTime = startTime;
-                selected.endTime = endTime;
+                selected.StartTime = startTime;
+                selected.EndTime = endTime;
 
-                nextOperationReadyTime[selected.jobID] = endTime;
-                machineReadyTime[selected.machine] = endTime;
-                lastJobOnMachine[selected.machine] = selected.jobID;
+                nextOperationReadyTime[selected.JobID] = endTime;
+                machineReadyTime[selected.Machine] = endTime;
+                lastJobOnMachine[selected.Machine] = selected.JobID;
 
-                nextOperation[selected.jobID]++;
+                nextOperation[selected.JobID]++;
                 scheduledOperations++;
             }
         }

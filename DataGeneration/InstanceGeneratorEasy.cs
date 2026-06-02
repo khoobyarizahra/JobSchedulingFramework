@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 
 /* Instance Generator mit zuälligen Instanzen
-   Vorherige Eingabe von jobs und Maschinen*/
+   Vorherige Eingabe von Jobs und Maschinen*/
 
 
 /*
@@ -15,7 +15,7 @@ namespace JobShopSchedulingFramework.DataGeneration
 
         static void Main()
         {
-            int jobs = 10;
+            int Jobs = 10;
             int machines = 5;
 
             int count = 1;
@@ -32,12 +32,12 @@ namespace JobShopSchedulingFramework.DataGeneration
                 //Meta Infos
                 writer.WriteLine("#Meta infos");
                 // Erste Zeile
-                writer.WriteLine(jobs + "," + machines);
+                writer.WriteLine(Jobs + "," + machines);
 
                 // Processing Times
                 writer.WriteLine("#Processing times");
 
-                for (int j = 0; j < jobs; j++)
+                for (int j = 0; j < Jobs; j++)
                 {
                     // Zufällige Anzahl Operationen zwischen 1 und Maschinenzahl
                     int ops = rnd.Next(1, machines + 1);
@@ -48,20 +48,20 @@ namespace JobShopSchedulingFramework.DataGeneration
 
                     for (int i = 0; i < ops; i++)
                     {
-                        int machine;
+                        int Machine;
 
                         // Maschine darf nur einmal pro Job vorkommen
                         do
                         {
-                            machine = rnd.Next(1, machines + 1);
+                            Machine = rnd.Next(1, machines + 1);
                         }
-                        while (usedMachines[machine - 1]);
+                        while (usedMachines[Machine - 1]);
 
-                        usedMachines[machine - 1] = true;
+                        usedMachines[Machine - 1] = true;
 
                         int time = rnd.Next(10, 101); // Dauer 10 bis 100
 
-                        line += "," + machine + "," + time;
+                        line += "," + Machine + "," + time;
                     }
 
                     writer.WriteLine(line);
@@ -70,11 +70,11 @@ namespace JobShopSchedulingFramework.DataGeneration
                 // Setup Times
                 writer.WriteLine("#Setup times");
 
-                for (int i = 0; i < jobs; i++)
+                for (int i = 0; i < Jobs; i++)
                 {
                     string line = "";
 
-                    for (int j = 0; j < jobs; j++)
+                    for (int j = 0; j < Jobs; j++)
                     {
                         int setup;
 
@@ -85,7 +85,7 @@ namespace JobShopSchedulingFramework.DataGeneration
 
                         line += setup;
 
-                        if (j < jobs - 1)
+                        if (j < Jobs - 1)
                             line += ",";
                     }
 

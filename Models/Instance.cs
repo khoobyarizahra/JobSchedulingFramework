@@ -14,18 +14,21 @@ using System.Text;
 
 namespace JobShopSchedulingFramework.Models
 {
-   
+    /*
+    Repräsentiert das gesamte Scheduling-Problem:
+    - Anzahl Jobs
+    - Anzahl Maschinen
+    - alle Jobs
+    - Setup-Zeiten zwischen Jobs
+  */
+
     public class Instance
     {
-        public int numJobs;
-        public int numMachines;
-        public List<Job> jobs;
-        public int[,] setupTimes;
+        public int NumJobs { get; set; }
+        public int NumMachines { get; set; }
+        public List<Job> Jobs {  get; set; } = new List<Job>();
+        public int[,] SetupTimes { get; set; } = new int[0, 0];
 
-        public Instance()
-        {
-            this.jobs = new List<Job>();
-        }
     }
 
 }

@@ -34,28 +34,28 @@ namespace JobShopSchedulingFramework.Data
                  META INFORMATION
                 */
                 writer.WriteLine("#Meta infos");
-                writer.WriteLine($"{instance.numJobs},{instance.numMachines}");
+                writer.WriteLine($"{instance.NumJobs},{instance.NumMachines}");
 
                 /*
                  PROCESSING TIMES
                 */
                 writer.WriteLine("#Processing times");
 
-                foreach (Job job in instance.jobs)
+                foreach (Job job in instance.Jobs)
                 {
                     /*
                      First value:
-                     number of operations of this job
+                     number of Operations of this job
                     */
-                    string line = job.operations.Count.ToString();
+                    string line = job.Operations.Count.ToString();
 
                     /*
                      Then:
-                     machine,processingTime pairs
+                     Machine,ProcessingTime pairs
                     */
-                    foreach (Operation operation in job.operations)
+                    foreach (Operation operation in job.Operations)
                     {
-                        line += $",{operation.machine},{operation.processingTime}";
+                        line += $",{operation.Machine},{operation.ProcessingTime}";
                     }
 
                     writer.WriteLine(line);
@@ -66,15 +66,15 @@ namespace JobShopSchedulingFramework.Data
                 */
                 writer.WriteLine("#Setup times");
 
-                for (int fromJob = 0; fromJob < instance.numJobs; fromJob++)
+                for (int fromJob = 0; fromJob < instance.NumJobs; fromJob++)
                 {
                     string line = "";
 
-                    for (int toJob = 0; toJob < instance.numJobs; toJob++)
+                    for (int toJob = 0; toJob < instance.NumJobs; toJob++)
                     {
-                        line += instance.setupTimes[fromJob, toJob];
+                        line += instance.SetupTimes[fromJob, toJob];
 
-                        if (toJob < instance.numJobs - 1)
+                        if (toJob < instance.NumJobs - 1)
                         {
                             line += ",";
                         }

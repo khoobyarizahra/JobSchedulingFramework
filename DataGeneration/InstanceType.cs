@@ -15,7 +15,7 @@
         Normal,              // Balanced processing times and moderate setup times
         LongProcessingTimes, // Longer processing times
         SetupHeavy,          // Higher setup times compared to processing times
-        BottleneckMachine,   // One machine is used very often and becomes critical
-        MixedRealistic       // Mix of normal and long operations
+        BottleneckMachine,   // One Machine is used very often and becomes critical
+        MixedRealistic       // Mix of normal and long Operations
     }
 }

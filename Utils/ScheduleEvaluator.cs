@@ -20,9 +20,9 @@ namespace JobShopSchedulingFramework.Utils
     {
         public static int CalculateCmax(Instance instance)
         {
-            return instance.jobs
-                .SelectMany(j => j.operations)
-                .Max(op => op.endTime);
+            return instance.Jobs
+                .SelectMany(j => j.Operations)
+                .Max(op => op.EndTime);
         }
     }
 }

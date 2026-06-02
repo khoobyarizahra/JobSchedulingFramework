@@ -6,24 +6,24 @@ namespace JobShopSchedulingFramework.Models
 {
     public class Operation
     {
-        public int jobID;
-        public int operationID;
-        public int machine;
-        public int processingTime;
+        public int JobID { get; }
+        public int OperationID {get; }
+        public int Machine { get; }
+        public int ProcessingTime { get; }
 
         // Ergebnisse des Schedulings
-        public int startTime;
-        public int endTime;
+        public int StartTime { get; set; }
+        public int EndTime { get; set; }
 
         // Für LRPT / SRPT
-        public int remainingProcessingTime;
+        public int remainingProcessingTime { get; set; }
 
         public Operation(int jobID, int operationID, int machine, int processingTime)
         {
-            this.jobID = jobID;
-            this.operationID = operationID;
-            this.machine = machine;
-            this.processingTime = processingTime;
+            this.JobID = jobID;
+            this.OperationID = operationID;
+            this.Machine = machine;
+            this.ProcessingTime = processingTime;
         }
     }
 }

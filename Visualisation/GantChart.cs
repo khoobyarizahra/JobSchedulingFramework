@@ -46,13 +46,13 @@ namespace JobShopSchedulingFramework.Visualisation
 
             int setupCounter = 0;
 
-            for (int machine = 1; machine <= instance.numMachines; machine++)
+            for (int machine = 1; machine <= instance.NumMachines; machine++)
             {
-                List<Operation> operationsOnMachine = instance.jobs
-                    .SelectMany(job => job.operations)
-                    .Where(op => op.machine == machine)
-                    .Where(op => op.endTime > op.startTime)
-                    .OrderBy(op => op.startTime)
+                List<Operation> operationsOnMachine = instance.Jobs
+                    .SelectMany(job => job.Operations)
+                    .Where(op => op.Machine == machine)
+                    .Where(op => op.EndTime > op.StartTime)
+                    .OrderBy(op => op.StartTime)
                     .ToList();
 
                 int previousJobId = 0;
@@ -62,11 +62,11 @@ namespace JobShopSchedulingFramework.Visualisation
                     if (previousJobId != 0)
                     {
                         int setupTime =
-                            instance.setupTimes[previousJobId - 1, operation.jobID - 1];
+                            instance.SetupTimes[previousJobId - 1, operation.JobID - 1];
 
                         if (setupTime > 0)
                         {
-                            int setupEnd = operation.startTime;
+                            int setupEnd = operation.StartTime;
                             int setupStart = setupEnd - setupTime;
 
                             if (setupStart >= 0 && setupStart < setupEnd)
@@ -85,23 +85,23 @@ namespace JobShopSchedulingFramework.Visualisation
                     }
 
                     string operationLabel =
-                        "J" + operation.jobID + "-O" + operation.operationID;
+                        "J" + operation.JobID + "-O" + operation.OperationID;
 
                     rows.Add(CreateRow(
                         machine,
                         operationLabel,
-                        operation.startTime,
-                        operation.endTime));
+                        operation.StartTime,
+                        operation.EndTime));
 
-                    colors.Add(GetJobColor(operation.jobID));
+                    colors.Add(GetJobColor(operation.JobID));
 
-                    previousJobId = operation.jobID;
+                    previousJobId = operation.JobID;
                 }
             }
 
-            int maxEndTime = instance.jobs
-                .SelectMany(job => job.operations)
-                .Max(operation => operation.endTime);
+            int maxEndTime = instance.Jobs
+                .SelectMany(job => job.Operations)
+                .Max(operation => operation.EndTime);
 
             string colorArray =
                 string.Join(", ", colors.Select(c => "'" + c + "'"));
@@ -249,7 +249,7 @@ function drawChart()
 
 <div style='margin-top:10px; margin-bottom:20px;'>
 
-Instance with n=" + instance.numJobs + @", m=" + instance.numMachines + @"<br>
+Instance with n=" + instance.NumJobs + @", m=" + instance.NumMachines + @"<br>
 
 Objective function: Makespan<br>
 

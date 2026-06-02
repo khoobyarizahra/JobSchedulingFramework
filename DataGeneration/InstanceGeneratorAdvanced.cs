@@ -25,10 +25,10 @@ namespace JobShopSchedulingFramework.DataGeneration
         // Defines which type of instance should be generated.
         private readonly InstanceType instanceType;
 
-        // Minimum processing time for generated operations.
+        // Minimum processing time for generated Operations.
         private int minProcessingTime;
 
-        // Maximum processing time for generated operations.
+        // Maximum processing time for generated Operations.
         private int maxProcessingTime;
 
         /*
@@ -62,7 +62,7 @@ namespace JobShopSchedulingFramework.DataGeneration
          Generate creates one complete scheduling instance.
 
          numberOfJobs:
-         Number of jobs in the instance.
+         Number of Jobs in the instance.
 
          numberOfMachines:
          Number of available machines.
@@ -76,13 +76,13 @@ namespace JobShopSchedulingFramework.DataGeneration
             Instance instance = new Instance();
 
             // Store basic meta information.
-            instance.numJobs = numberOfJobs;
-            instance.numMachines = numberOfMachines;
+            instance.NumJobs = numberOfJobs;
+            instance.NumMachines = numberOfMachines;
 
-            // Create setup matrix: setupTimes[fromJob - 1, toJob - 1].
-            instance.setupTimes = new int[numberOfJobs, numberOfJobs];
+            // Create setup matrix: SetupTimes[fromJob - 1, toJob - 1].
+            instance.SetupTimes = new int[numberOfJobs, numberOfJobs];
 
-            // Generate jobs and their operations.
+            // Generate Jobs and their Operations.
             GenerateJobs(instance);
 
             // Generate sequence-dependent setup times.
@@ -132,42 +132,42 @@ namespace JobShopSchedulingFramework.DataGeneration
         }
 
         /*
-         GenerateJobs creates all jobs of the instance.
+         GenerateJobs creates all Jobs of the instance.
 
-         Each job receives a random number of operations.
-         Each operation has:
-         - jobID
-         - operationID
-         - machine
-         - processingTime
+         Each job receives a random number of Operations.
+         Each Operation has:
+         - JobID
+         - OperationID
+         - Machine
+         - ProcessingTime
         */
         private void GenerateJobs(Instance instance)
         {
-            // In a job shop, a job can have fewer operations than machines.
+            // In a job shop, a job can have fewer Operations than machines.
             int minOperationsPerJob = 2;
 
             // A job should not use more machines than available.
-            int maxOperationsPerJob = instance.numMachines;
+            int maxOperationsPerJob = instance.NumMachines;
 
-            // Create jobs with IDs 1, 2, ..., numJobs.
-            for (int jobID = 1; jobID <= instance.numJobs; jobID++)
+            // Create Jobs with IDs 1, 2, ..., NumJobs.
+            for (int jobID = 1; jobID <= instance.NumJobs; jobID++)
             {
                 // Use existing Job class from Models/Job.cs.
                 Job job = new Job(jobID);
 
-                // Random number of operations for this job.
+                // Random number of Operations for this job.
                 int numberOfOperations = random.Next(
                     minOperationsPerJob,
                     maxOperationsPerJob + 1
                 );
 
-                // Select machines for the operations.
+                // Select machines for the Operations.
                 List<int> machines = SelectMachines(
-                    instance.numMachines,
+                    instance.NumMachines,
                     numberOfOperations
                 );
 
-                // operationID starts at 1 because your project uses 1-based IDs.
+                // OperationID starts at 1 because your project uses 1-based IDs.
                 int operationID = 1;
 
                 foreach (int machine in machines)
@@ -183,14 +183,14 @@ namespace JobShopSchedulingFramework.DataGeneration
                         processingTime
                     );
 
-                    // Add operation to the job.
-                    job.operations.Add(operation);
+                    // Add Operation to the job.
+                    job.Operations.Add(operation);
 
                     operationID++;
                 }
 
                 // Add complete job to the instance.
-                instance.jobs.Add(job);
+                instance.Jobs.Add(job);
             }
         }
 
@@ -198,8 +198,8 @@ namespace JobShopSchedulingFramework.DataGeneration
          SelectMachines chooses the machines used by one job.
 
          Important:
-         - One machine should not appear twice in the same job.
-         - The order is randomly shuffled because operation order matters.
+         - One Machine should not appear twice in the same job.
+         - The order is randomly shuffled because Operation order matters.
         */
         private List<int> SelectMachines(int numberOfMachines, int numberOfOperations)
         {
@@ -228,34 +228,34 @@ namespace JobShopSchedulingFramework.DataGeneration
                     .ToList();
             }
 
-            // Shuffle final machine order.
+            // Shuffle final Machine order.
             // This creates the technological order of the job.
             return machines.OrderBy(x => random.Next()).ToList();
         }
 
         /*
-         GenerateProcessingTime creates the duration of one operation.
+         GenerateProcessingTime creates the duration of one Operation.
 
-         For bottleneck instances, machine 1 receives longer processing times.
-         For mixed realistic instances, some operations are much longer.
+         For bottleneck instances, Machine 1 receives longer processing times.
+         For mixed realistic instances, some Operations are much longer.
         */
         private int GenerateProcessingTime(int machine)
         {
             if (instanceType == InstanceType.BottleneckMachine && machine == 1)
             {
-                // Longer processing times on the bottleneck machine.
+                // Longer processing times on the bottleneck Machine.
                 return random.Next(maxProcessingTime, maxProcessingTime * 2 + 1);
             }
 
             if (instanceType == InstanceType.MixedRealistic)
             {
-                // 70% normal operations.
+                // 70% normal Operations.
                 if (random.Next(100) < 70)
                 {
                     return random.Next(minProcessingTime, maxProcessingTime + 1);
                 }
 
-                // 30% long operations.
+                // 30% long Operations.
                 return random.Next(maxProcessingTime, maxProcessingTime * 2 + 1);
             }
 
@@ -266,11 +266,11 @@ namespace JobShopSchedulingFramework.DataGeneration
         /*
          GenerateSetupTimes creates sequence-dependent setup times.
 
-         setupTimes[i, j] means:
+         SetupTimes[i, j] means:
          setup time from job i+1 to job j+1.
 
          Example:
-         setupTimes[0, 2] = setup time from job 1 to job 3.
+         SetupTimes[0, 2] = setup time from job 1 to job 3.
         */
         private void GenerateSetupTimes(Instance instance)
         {
@@ -288,19 +288,19 @@ namespace JobShopSchedulingFramework.DataGeneration
             int maxSetup = Math.Max(minSetup + 1, (int)(1.5 * meanSetupTime));
 
             // Fill setup matrix.
-            for (int fromJob = 0; fromJob < instance.numJobs; fromJob++)
+            for (int fromJob = 0; fromJob < instance.NumJobs; fromJob++)
             {
-                for (int toJob = 0; toJob < instance.numJobs; toJob++)
+                for (int toJob = 0; toJob < instance.NumJobs; toJob++)
                 {
                     if (fromJob == toJob)
                     {
                         // No setup from a job to itself.
-                        instance.setupTimes[fromJob, toJob] = 0;
+                        instance.SetupTimes[fromJob, toJob] = 0;
                     }
                     else
                     {
-                        // Random setup time between two different jobs.
-                        instance.setupTimes[fromJob, toJob] =
+                        // Random setup time between two different Jobs.
+                        instance.SetupTimes[fromJob, toJob] =
                             random.Next(minSetup, maxSetup + 1);
                     }
                 }
