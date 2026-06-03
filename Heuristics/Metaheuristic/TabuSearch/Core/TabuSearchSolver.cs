@@ -94,9 +94,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                     CriticalBlockBuilder.BuildCriticalBlocks(
                         currentOrders,
                         analysisResult.criticalOperations);
-                Console.WriteLine(
-                "Critical blocks count: " +
-                criticalBlocks.Count);
 
                 // Alle möglichen Nachbarschaftsbewegungen erzeugen.
                 List<Move> moves =
@@ -104,29 +101,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 instance,
                 currentOrders,
                 criticalBlocks);
-
-                Console.WriteLine(
-                "Generated moves: " +
-                moves.Count);
-
-                foreach (CriticalBlock block in criticalBlocks)
-                {
-                    Console.WriteLine(
-                        "Block on Machine " +
-                        block.machine +
-                        " | StartIndex: " +
-                        block.startIndexInMachine +
-                        " | Length: " +
-                        block.operations.Count +
-                        " | Operations: " +
-                        string.Join(
-                            " -> ",
-                            block.operations.Select(operation =>
-                                "J" +
-                                operation.JobID +
-                                "O" +
-                                operation.OperationID)));
-                }
 
                 if (moves.Count == 0)
                 {
@@ -251,6 +225,7 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 
             Console.WriteLine();
             Console.WriteLine("Final best Cmax: " + bestCmax);
+            PrintMachineOrder(bestOrders);
 
             return bestCmax;
         }
@@ -259,11 +234,34 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
         /// Vertauscht zwei Operationen innerhalb einer Maschinenreihenfolge.
         /// </summary>
         private void ApplyMove(
-            Dictionary<int, List<Operation>> machineOrders,
-            Move move)
+    Dictionary<int, List<Operation>> machineOrders,
+    Move move)
         {
             List<Operation> operationsOnMachine =
                 machineOrders[move.Machine];
+
+            if (move.IsInsertMove)
+            {
+                Operation movedOperation =
+                    operationsOnMachine[move.MachineIndex1];
+
+                operationsOnMachine.RemoveAt(
+                    move.MachineIndex1);
+
+                int targetIndex =
+                    move.MachineIndex2;
+
+                if (move.MachineIndex1 < move.MachineIndex2)
+                {
+                    targetIndex--;
+                }
+
+                operationsOnMachine.Insert(
+                    targetIndex,
+                    movedOperation);
+
+                return;
+            }
 
             Operation temp =
                 operationsOnMachine[move.MachineIndex1];
@@ -273,6 +271,29 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 
             operationsOnMachine[move.MachineIndex2] =
                 temp;
+        }
+        private void PrintMachineOrder(
+    Dictionary<int, List<Operation>> machineOrders)
+        {
+            Console.WriteLine();
+            Console.WriteLine("TABU MACHINE ORDER");
+            Console.WriteLine("--------------------------------");
+
+            foreach (var pair in machineOrders.OrderBy(pair => pair.Key))
+            {
+                Console.Write("Machine " + pair.Key + ": ");
+
+                Console.WriteLine(
+                    string.Join(
+                        " -> ",
+                        pair.Value.Select(operation =>
+                            "J" +
+                            operation.JobID +
+                            "O" +
+                            operation.OperationID)));
+            }
+
+            Console.WriteLine();
         }
     }
 }

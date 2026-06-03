@@ -16,6 +16,7 @@
 
         public int SecondJob { get; set; }
         public int SecondOperation { get; set; }
+        public bool IsInsertMove { get; set; }
 
         public Move(
             int machine,
@@ -35,6 +36,7 @@
 
             this.SecondJob = job2;
             this.SecondOperation = operation2;
+            this.IsInsertMove = false;
         }
         //Die GetKey-Methode generiert einen eindeutigen Schlüssel für diesen Move, der auf der Maschine und den beteiligten Jobs und Operationen basiert.
         public string GetKey()

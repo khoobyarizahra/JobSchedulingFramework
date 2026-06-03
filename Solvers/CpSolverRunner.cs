@@ -1,5 +1,7 @@
 ﻿using JobShopSchedulingFramework.Models;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace JobShopSchedulingFramework.ExactSolvers
 {
@@ -16,6 +18,11 @@ namespace JobShopSchedulingFramework.ExactSolvers
                 solver.Solve(
                     instance,
                     timeLimitSeconds);
+
+            if (cpCmax != int.MaxValue)
+            {
+                PrintMachineOrder(instance);
+            }
 
             return cpCmax;
         }
@@ -47,6 +54,37 @@ namespace JobShopSchedulingFramework.ExactSolvers
 
             Console.WriteLine("Initial gap:  " + initialGap.ToString("F2") + "%");
             Console.WriteLine("Tabu gap:     " + tabuGap.ToString("F2") + "%");
+        }
+
+        private static void PrintMachineOrder(
+            Instance instance)
+        {
+            Console.WriteLine();
+            Console.WriteLine("CP MACHINE ORDER");
+            Console.WriteLine("--------------------------------");
+
+            for (int machine = 1; machine <= instance.NumMachines; machine++)
+            {
+                List<Operation> operations =
+                    instance.Jobs
+                        .SelectMany(job => job.Operations)
+                        .Where(operation => operation.Machine == machine)
+                        .OrderBy(operation => operation.StartTime)
+                        .ToList();
+
+                Console.Write("Machine " + machine + ": ");
+
+                Console.WriteLine(
+                    string.Join(
+                        " -> ",
+                        operations.Select(operation =>
+                            "J" +
+                            operation.JobID +
+                            "O" +
+                            operation.OperationID)));
+            }
+
+            Console.WriteLine();
         }
     }
 }

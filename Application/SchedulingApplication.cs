@@ -152,7 +152,7 @@ namespace JobShopSchedulingFramework.Application
                 ("N1 - Adjacent Critical Block Swaps", new AdjacentSwapNeighborhood()),
                 ("N2 - Restricted First/Last Block Swaps", new RestrictedBlockSwapNeighborhood()),
                 ("N3 - All Pair Critical Block Swaps", new AllPairSwapNeighborhood()),
-                ("N4 - Setup-Heavy Machine Neighborhood", new SetupHeavyMachineNeighborhood())
+                ("N4 - Critical Block Insert Moves", new CriticalBlockInsertNeighborhood())
             };
 
             Console.WriteLine(
