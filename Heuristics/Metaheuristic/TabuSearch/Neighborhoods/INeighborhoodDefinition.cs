@@ -4,8 +4,6 @@ using JobShopSchedulingFramework.Models;
 
 namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighborhoods
 {
-
- 
     public class RestrictedBlockSwapNeighborhood : INeighborhoodDefinition
     {
         public List<Move> GenerateMoves(
