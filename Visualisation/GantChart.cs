@@ -161,6 +161,7 @@ namespace JobShopSchedulingFramework.Visualisation
                 .Replace("\"", "\\\"");
         }
 
+
         private static string BuildHtml(
             Instance instance,
             string rowsArray,
@@ -171,100 +172,193 @@ namespace JobShopSchedulingFramework.Visualisation
             int maxEndTime)
         {
             return @"<!DOCTYPE html>
+        <html>
+        <head>
+        <meta charset=""utf-8"">
+
+        <style>
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12px;
+        }
+
+        #schedule {
+            height: 500px;
+        }
+        </style>
+
+        <script type=""text/javascript"" src=""https://www.gstatic.com/charts/loader.js""></script>
+
+        <script type=""text/javascript"">
+
+        google.charts.load('current', { packages:['timeline'] });
+        google.charts.setOnLoadCallback(drawChart);
+
+        function drawChart()
+        {
+            var container =
+                document.getElementById('schedule');
+
+            var chart =
+                new google.visualization.Timeline(container);
+
+            var dataTable =
+                new google.visualization.DataTable();
+
+            dataTable.addColumn({ type: 'string', id: 'Machine' });
+            dataTable.addColumn({ type: 'string', id: 'Operation' });
+            dataTable.addColumn({ type: 'date', id: 'Start' });
+            dataTable.addColumn({ type: 'date', id: 'End' });
+
+            dataTable.addRows([
+                " + rowsArray + @"
+            ]);
+
+            var options =
+            {
+                colors: [" + colorArray + @"],
+
+                hAxis:
+                {
+                    minValue: new Date(0,0,0,0,0,0,0),
+                    maxValue: new Date(0,0,0,0," + maxEndTime + @",0,0)
+                },
+
+                timeline:
+                {
+                    rowLabelStyle:
+                    {
+                        fontName: 'Helvetica',
+                        fontSize: 12
+                    },
+
+                    barLabelStyle:
+                    {
+                        fontName: 'Helvetica',
+                        fontSize: 12
+                    }
+                }
+            };
+
+            chart.draw(dataTable, options);
+        }
+
+        </script>
+        </head>
+
+        <body>
+
+        <div style='margin-top:10px; margin-bottom:20px;'>
+
+        Instance with n=" + instance.NumJobs + @", m=" + instance.NumMachines + @"<br>
+
+        Objective function: Makespan<br>
+
+        Algorithm: " + WebUtility.HtmlEncode(algorithmName) + @"<br>
+
+        Objective value: " + objectiveValue + @"<br>
+
+        Status: " + WebUtility.HtmlEncode(status) + @"
+
+        </div>
+
+        <div id='schedule'></div>
+
+        </body>
+        </html>";
+        }
+        public static void CreateComparisonHtml(
+        string outputPath,
+        string initialChartFile,
+        string tabuChartFile,
+        string cpChartFile,
+        string initialAlgorithmName,
+        string tabuAlgorithmName,
+        int initialCmax,
+        int tabuCmax,
+        int cpCmax)
+        {
+            int improvement =
+                initialCmax - tabuCmax;
+
+            double improvementPercent =
+                initialCmax > 0
+                    ? (double)improvement / initialCmax * 100.0
+                    : 0.0;
+            int gapToCp =
+            tabuCmax - cpCmax;
+
+            double gapToCpPercent =
+                cpCmax > 0
+                    ? (double)gapToCp / cpCmax * 100.0
+                    : 0.0;
+
+            string html =
+  @"<!DOCTYPE html>
 <html>
 <head>
 <meta charset=""utf-8"">
-
 <style>
 body {
     font-family: Helvetica, Arial, sans-serif;
-    font-size: 12px;
+    font-size: 13px;
+    margin: 20px;
 }
 
-#schedule {
-    height: 500px;
+.summary {
+    border: 1px solid #cccccc;
+    background: #f7f7f7;
+    padding: 12px;
+    margin-bottom: 25px;
+}
+
+iframe {
+    width: 100%;
+    height: 620px;
+    border: 1px solid #cccccc;
 }
 </style>
-
-<script type=""text/javascript"" src=""https://www.gstatic.com/charts/loader.js""></script>
-
-<script type=""text/javascript"">
-
-google.charts.load('current', { packages:['timeline'] });
-google.charts.setOnLoadCallback(drawChart);
-
-function drawChart()
-{
-    var container =
-        document.getElementById('schedule');
-
-    var chart =
-        new google.visualization.Timeline(container);
-
-    var dataTable =
-        new google.visualization.DataTable();
-
-    dataTable.addColumn({ type: 'string', id: 'Machine' });
-    dataTable.addColumn({ type: 'string', id: 'Operation' });
-    dataTable.addColumn({ type: 'date', id: 'Start' });
-    dataTable.addColumn({ type: 'date', id: 'End' });
-
-    dataTable.addRows([
-        " + rowsArray + @"
-    ]);
-
-    var options =
-    {
-        colors: [" + colorArray + @"],
-
-        hAxis:
-        {
-            minValue: new Date(0,0,0,0,0,0,0),
-            maxValue: new Date(0,0,0,0," + maxEndTime + @",0,0)
-        },
-
-        timeline:
-        {
-            rowLabelStyle:
-            {
-                fontName: 'Helvetica',
-                fontSize: 12
-            },
-
-            barLabelStyle:
-            {
-                fontName: 'Helvetica',
-                fontSize: 12
-            }
-        }
-    };
-
-    chart.draw(dataTable, options);
-}
-
-</script>
 </head>
 
 <body>
 
-<div style='margin-top:10px; margin-bottom:20px;'>
+<h1>Initial Heuristic vs Tabu Search</h1>
 
-Instance with n=" + instance.NumJobs + @", m=" + instance.NumMachines + @"<br>
+<div class=""summary"">
+<b>Initial heuristic:</b> " + WebUtility.HtmlEncode(initialAlgorithmName) + @"<br>
+<b>Initial Cmax:</b> " + initialCmax + @"<br><br>
 
-Objective function: Makespan<br>
+<b>Tabu Search:</b> " + WebUtility.HtmlEncode(tabuAlgorithmName) + @"<br>
+<b>Tabu Cmax:</b> " + tabuCmax + @"<br><br>
 
-Algorithm: " + WebUtility.HtmlEncode(algorithmName) + @"<br>
+<b>CP Solver:</b> Optimal / Best Found Solution<br>
+<b>CP Cmax:</b> " + cpCmax + @"<br>
+<b>Gap Tabu to CP:</b> " + gapToCp + @" (" + gapToCpPercent.ToString("F2") + @"%)<br><br>
 
-Objective value: " + objectiveValue + @"<br>
-
-Status: " + WebUtility.HtmlEncode(status) + @"
-
+<b>Tabu Improvement:</b> " + improvement + @" (" + improvementPercent.ToString("F2") + @"%)
 </div>
 
-<div id='schedule'></div>
+<h2>Initial Heuristic Schedule</h2>
+<iframe src=""" + WebUtility.HtmlEncode(initialChartFile) + @"""></iframe>
+
+<h2>Tabu Search Schedule</h2>
+<iframe src=""" + WebUtility.HtmlEncode(tabuChartFile) + @"""></iframe>
+
+<h2>CP Solver Schedule</h2>
+<iframe src=""" + WebUtility.HtmlEncode(cpChartFile) + @"""></iframe>
 
 </body>
 </html>";
+
+            string directory =
+                Path.GetDirectoryName(outputPath);
+
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            File.WriteAllText(outputPath, html, Encoding.UTF8);
         }
     }
 }

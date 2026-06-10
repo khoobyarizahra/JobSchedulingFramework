@@ -7,9 +7,9 @@ namespace JobShopSchedulingFramework.ExactSolvers
 {
     public static class CpSolverRunner
     {
-        public static int Run(
-            Instance instance,
-            int timeLimitSeconds)
+        public static CpSolverResult Run(
+    Instance instance,
+    int timeLimitSeconds)
         {
             CpSatJobShopSolver solver =
                 new CpSatJobShopSolver();
@@ -24,7 +24,11 @@ namespace JobShopSchedulingFramework.ExactSolvers
                 PrintMachineOrder(instance);
             }
 
-            return cpCmax;
+            return new CpSolverResult
+            {
+                BestInstance = instance,
+                Cmax = cpCmax
+            };
         }
 
         public static void PrintComparison(

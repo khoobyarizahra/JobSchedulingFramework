@@ -1,6 +1,7 @@
 ﻿using JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Criticality;
 using JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighborhoods;
 using JobShopSchedulingFramework.Models;
+using System.Diagnostics;
 using System.Linq;
 
 namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
@@ -17,22 +18,35 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
         private readonly int maxIterations;
 
         // Definiert die verwendete Nachbarschaftsstruktur.
-        private readonly INeighborhoodDefinition neighborhoodDefinition;
+        private readonly int timeLimitSeconds;
+        private readonly INeighborhoodDefinition mainNeighborhood;
+        private readonly INeighborhoodDefinition diversificationNeighborhood;
+        private int iterationsWithoutImprovement;
+        private const int StagnationLimit = 300;
 
         public TabuSearchSolver(
-            int maxIterations,
-            INeighborhoodDefinition neighborhoodDefinition)
-        {
+        int maxIterations,
+        int timeLimitSeconds,
+        INeighborhoodDefinition neighborhoodDefinition)
+            {
             this.maxIterations = maxIterations;
-            this.neighborhoodDefinition = neighborhoodDefinition;
-        }
+            this.timeLimitSeconds = timeLimitSeconds;
+
+            mainNeighborhood = neighborhoodDefinition;
+            diversificationNeighborhood = new CriticalBlockInsertNeighborhood();
+            iterationsWithoutImprovement = 0;
+             }
 
         /// <summary>
         /// Führt die Tabu Search auf der übergebenen Instanz aus
         /// und gibt den besten gefundenen Makespan zurück.
         /// </summary>
+
+
         public int Run(Instance instance)
         {
+            Stopwatch stopwatch =
+            Stopwatch.StartNew();
             // Maschinenreihenfolgen aus dem aktuellen Schedule erzeugen.
             Dictionary<int, List<Operation>> currentOrders =
                 ScheduleOrderHelper.BuildMachineOrders(instance);
@@ -80,6 +94,14 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             // Hauptschleife der Tabu Search.
             for (int iteration = 1; iteration <= maxIterations; iteration++)
             {
+                if (stopwatch.Elapsed.TotalSeconds >= timeLimitSeconds)
+                {
+                    Console.WriteLine(
+                        $"Time limit reached after {stopwatch.Elapsed.TotalSeconds:F2} seconds.");
+
+                    break;
+                }
+
                 // Aktualisiert die Tabu-Dauer in regelmäßigen Abständen.
                 tabuList.UpdateTenureIfNeeded(iteration);
 
@@ -94,13 +116,52 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                     CriticalBlockBuilder.BuildCriticalBlocks(
                         currentOrders,
                         analysisResult.criticalOperations);
+                //Debug
+                if (iteration <= 10)
+                {
+                    Console.WriteLine(
+                        $"Critical operations: {analysisResult.criticalOperations.Count}");
+                }
 
-                // Alle möglichen Nachbarschaftsbewegungen erzeugen.
+                bool useDiversification =
+                iterationsWithoutImprovement >= StagnationLimit;
+
+                INeighborhoodDefinition activeNeighborhood =
+                    useDiversification
+                        ? diversificationNeighborhood
+                        : mainNeighborhood;
+
+                if (useDiversification)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine(
+                        "Diversification triggered: switching to " +
+                        diversificationNeighborhood.GetType().Name);
+                    Console.WriteLine();
+                }
+                if (iterationsWithoutImprovement == StagnationLimit)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine(
+                        "Diversification triggered: switching to " +
+                        diversificationNeighborhood.GetType().Name);
+                    Console.WriteLine();
+                }
+
                 List<Move> moves =
-                neighborhoodDefinition.GenerateMoves(
-                instance,
-                currentOrders,
-                criticalBlocks);
+                    activeNeighborhood.GenerateMoves(
+                        instance,
+                        currentOrders,
+                        criticalBlocks);
+
+                if (iteration <= 10 || iteration % 100 == 0)
+                {
+                    Console.WriteLine(
+                        "Iteration " + iteration +
+                        " | Neighborhood: " + activeNeighborhood.GetType().Name +
+                        " | Critical blocks: " + criticalBlocks.Count +
+                        " | Generated moves: " + moves.Count);
+                }
 
                 if (moves.Count == 0)
                 {
@@ -176,6 +237,12 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                             candidateOrders;
                     }
                 }
+                //Debug
+                if (iteration <= 10 || iteration % 100 == 0)
+                {
+                    Console.WriteLine(
+                        $"Best candidate Cmax: {bestCandidateCmax}");
+                }
 
                 // Falls kein zulässiger Kandidat existiert, wird die Suche beendet.
                 if (bestMove == null ||
@@ -196,8 +263,17 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 tabuList.RegisterMove(
                     bestMove,
                     iteration);
+                if (useDiversification)
+                {
+                    iterationsWithoutImprovement = 0;
+                }
 
                 // Globale Bestlösung aktualisieren.
+                // If the current solution improves the global best solution,
+                // the stagnation counter is reset. Otherwise, it is increased.
+                // Once the counter reaches the stagnation limit, the solver
+                // temporarily switches from the main neighborhood to the
+                // diversification neighborhood.
                 if (currentCmax < bestCmax)
                 {
                     bestCmax =
@@ -206,14 +282,23 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                     bestOrders =
                         ScheduleOrderHelper.CopyMachineOrders(
                             currentOrders);
+
+                    iterationsWithoutImprovement = 0;
+                }
+                else
+                {
+                    iterationsWithoutImprovement++;
                 }
 
-                Console.WriteLine(
-                    iteration.ToString().PadRight(8) + " | " +
-                    currentCmax.ToString().PadRight(10) + " | " +
-                    bestCmax.ToString().PadRight(10) + " | " +
-                    tabuList.CurrentTenure.ToString().PadRight(8) + " | " +
-                    bestMove);
+                if (iteration <= 10 || iteration % 100 == 0)
+                {
+                    Console.WriteLine(
+                        iteration.ToString().PadRight(8) + " | " +
+                        currentCmax.ToString().PadRight(10) + " | " +
+                        bestCmax.ToString().PadRight(10) + " | " +
+                        tabuList.CurrentTenure.ToString().PadRight(8) + " | " +
+                        bestMove);
+                }
             }
 
             // Den besten gefundenen Schedule erneut berechnen,

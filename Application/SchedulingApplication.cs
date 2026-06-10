@@ -128,7 +128,7 @@ namespace JobShopSchedulingFramework.Application
                 CloneInstance(result.bestInstance);
 
             TabuNeighborhoodExperimentResult tabuResult =
-                RunTabuNeighborhoodExperiment(result);
+            RunFinalTabuSearch(result);
 
             string outputFolder =
                 @"Visualisation\Output";
@@ -211,6 +211,87 @@ namespace JobShopSchedulingFramework.Application
             });
         }
 
+        private static TabuNeighborhoodExperimentResult RunFinalTabuSearch(
+    InitialHeuristicResult result)
+        {
+            Console.WriteLine();
+            Console.WriteLine("=======================================");
+            Console.WriteLine(" FINAL TABU SEARCH COMPARISON WITH 90S LIMIT");
+            Console.WriteLine("=======================================");
+
+            TabuNeighborhoodExperimentResult n3Result =
+                RunSingleFinalTabuSearch(
+                    result,
+                    "N3 - All Pair Critical Block Swaps",
+                    new AllPairSwapNeighborhood());
+
+            TabuNeighborhoodExperimentResult combinedResult =
+                RunSingleFinalTabuSearch(
+                    result,
+                    "Combined Neighborhood",
+                    new CombinedNeighborhood());
+
+            Console.WriteLine();
+            Console.WriteLine("FINAL 90S TABU COMPARISON");
+            Console.WriteLine("---------------------------------------");
+            Console.WriteLine("N3 Cmax: " + n3Result.BestCmax);
+            Console.WriteLine("Combined Cmax: " + combinedResult.BestCmax);
+
+            if (combinedResult.BestCmax <= n3Result.BestCmax)
+            {
+                Console.WriteLine("Selected final neighborhood: Combined Neighborhood");
+                return combinedResult;
+            }
+
+            Console.WriteLine("Selected final neighborhood: N3 - All Pair Critical Block Swaps");
+            return n3Result;
+        }
+
+        private static TabuNeighborhoodExperimentResult RunSingleFinalTabuSearch(
+    InitialHeuristicResult result,
+    string neighborhoodName,
+    INeighborhoodDefinition neighborhoodDefinition)
+        {
+            Console.WriteLine();
+            Console.WriteLine("Running final Tabu Search with: " + neighborhoodName);
+
+            Instance instanceCopy =
+                CloneInstance(result.bestInstance);
+
+            Stopwatch stopwatch =
+                Stopwatch.StartNew();
+
+            int maxIterationsForTenure =
+            Math.Max(
+                5000,
+                result.bestInstance.NumJobs *
+                result.bestInstance.NumMachines *
+                25);
+
+            TabuSearchSolver tabuSearch =
+                new TabuSearchSolver(
+                    maxIterations: maxIterationsForTenure,
+                    timeLimitSeconds: 90,
+                    neighborhoodDefinition: neighborhoodDefinition);
+
+            int tabuCmax =
+                tabuSearch.Run(instanceCopy);
+
+            stopwatch.Stop();
+
+            Console.WriteLine();
+            Console.WriteLine("Result for " + neighborhoodName);
+            Console.WriteLine("Tabu Cmax: " + tabuCmax);
+            Console.WriteLine("Runtime ms: " + stopwatch.ElapsedMilliseconds);
+
+            return new TabuNeighborhoodExperimentResult
+            {
+                BestInstance = instanceCopy,
+                BestCmax = tabuCmax,
+                BestNeighborhoodName = neighborhoodName,
+                RuntimeMs = stopwatch.ElapsedMilliseconds
+            };
+        }
         private static TabuNeighborhoodExperimentResult RunTabuNeighborhoodExperiment(
             InitialHeuristicResult result)
         {
@@ -226,8 +307,10 @@ namespace JobShopSchedulingFramework.Application
             Console.WriteLine("Initial Cmax: " + initialCmax);
             Console.WriteLine();
 
-            int maxIterations =
-                5000;
+            int maxIterations = 5000;
+
+            int neighborhoodExperimentTimeLimitSeconds =
+                int.MaxValue;
 
             List<(string Name, INeighborhoodDefinition Neighborhood)> neighborhoods =
                 new List<(string Name, INeighborhoodDefinition Neighborhood)>
@@ -268,9 +351,10 @@ namespace JobShopSchedulingFramework.Application
                     Stopwatch.StartNew();
 
                 TabuSearchSolver tabuSearch =
-                    new TabuSearchSolver(
-                        maxIterations: maxIterations,
-                        neighborhoodDefinition: item.Neighborhood);
+                new TabuSearchSolver(
+                maxIterations: maxIterations,
+                timeLimitSeconds: neighborhoodExperimentTimeLimitSeconds,
+                neighborhoodDefinition: item.Neighborhood);
 
                 int tabuCmax =
                     tabuSearch.Run(instanceCopy);

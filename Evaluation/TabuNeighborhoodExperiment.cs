@@ -33,14 +33,17 @@ namespace JobShopSchedulingFramework.Evaluation
 
             Console.WriteLine(new string('-', 80));
 
+            int timeLimitSeconds = int.MaxValue;
+
             foreach (var item in neighborhoods)
             {
                 Stopwatch stopwatch = Stopwatch.StartNew();
 
                 TabuSearchSolver solver =
-                 new TabuSearchSolver(
-                maxIterations,
-                item.Neighborhood);
+                    new TabuSearchSolver(
+                        maxIterations,
+                        timeLimitSeconds,
+                        item.Neighborhood);
 
                 int bestCmax =
                     solver.Run(instance);

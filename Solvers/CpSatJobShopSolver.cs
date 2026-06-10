@@ -89,6 +89,22 @@ namespace JobShopSchedulingFramework.ExactSolvers
 
             CpSolverStatus status =
                 solver.Solve(model);
+            if (status == CpSolverStatus.Optimal ||
+            status == CpSolverStatus.Feasible)
+            {
+                foreach (Operation operation in operations)
+                {
+                    operation.StartTime =
+                        (int)solver.Value(startVars[operation]);
+
+                    operation.EndTime =
+                        (int)solver.Value(endVars[operation]);
+                }
+
+                return (int)solver.ObjectiveValue;
+            }
+
+            return int.MaxValue;
 
             Console.WriteLine();
             Console.WriteLine("CP-SAT SOLVER");
