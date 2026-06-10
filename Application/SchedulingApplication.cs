@@ -16,14 +16,14 @@ namespace JobShopSchedulingFramework.Application
         {
             PrintHeader();
 
-            GenerateControlledInstances();
+            string instanceFolder =
+                SelectInstanceSource();
 
             Console.WriteLine("Instance selection starts now.");
             Console.WriteLine();
 
             string fileName =
-                InstanceFileSelector.SelectFromFolder(
-                    @"Instances\Generated");
+                InstanceFileSelector.SelectFromFolder(instanceFolder);
 
             Console.WriteLine();
             Console.WriteLine("You selected:");
@@ -35,6 +35,36 @@ namespace JobShopSchedulingFramework.Application
             Console.WriteLine();
             Console.WriteLine("Press any key to exit...");
             Console.ReadKey();
+        }
+
+        private static string SelectInstanceSource()
+        {
+            Console.WriteLine("Select instance source:");
+            Console.WriteLine("1 - Generate new instances");
+            Console.WriteLine("2 - Use benchmark instances");
+            Console.Write("Choice: ");
+
+            while (true)
+            {
+                string choice =
+                    Console.ReadLine();
+
+                if (choice == "1")
+                {
+                    GenerateControlledInstances();
+
+                    return Path.GetFullPath(
+                        Path.Combine(AppContext.BaseDirectory, @"..\..\..\Instances\Generated"));
+                }
+
+                if (choice == "2")
+                {
+                    return Path.GetFullPath(
+                        Path.Combine(AppContext.BaseDirectory, @"..\..\..\Instances\Benchmark"));
+                }
+
+                Console.Write("Invalid input. Please enter 1 or 2: ");
+            }
         }
 
         private static void PrintHeader()
@@ -56,7 +86,10 @@ namespace JobShopSchedulingFramework.Application
             int numberOfInstances = 5;
 
             string outputFolder =
-                @"Instances\Generated";
+               Path.GetFullPath(
+               Path.Combine(AppContext.BaseDirectory, @"..\..\..\Instances\Generated"));
+
+            Directory.CreateDirectory(outputFolder);
 
             InstanceWriter writer =
                 new InstanceWriter();
@@ -91,44 +124,94 @@ namespace JobShopSchedulingFramework.Application
             InitialHeuristicResult result =
                 HeuristicExperiment.Run(fileName);
 
-            int bestTabuCmax =
+            Instance initialInstanceForChart =
+                CloneInstance(result.bestInstance);
+
+            TabuNeighborhoodExperimentResult tabuResult =
                 RunTabuNeighborhoodExperiment(result);
 
-            int cpCmax =
+            string outputFolder =
+                @"Visualisation\Output";
+
+            Directory.CreateDirectory(outputFolder);
+
+            string initialOutputPath =
+                Path.Combine(outputFolder, "initial_heuristic.html");
+
+            string tabuOutputPath =
+                Path.Combine(outputFolder, "tabu_search.html");
+
+            string cpOutputPath =
+                Path.Combine(outputFolder, "cp_solver.html");
+
+            string comparisonOutputPath =
+                Path.Combine(outputFolder, "comparison.html");
+
+            Console.WriteLine();
+            Console.WriteLine("CP solver starts now...");
+
+            CpSolverResult cpResult =
                 CpSolverRunner.Run(
                     CloneInstance(result.bestInstance),
                     timeLimitSeconds: 90);
 
+            int cpCmax =
+                cpResult.Cmax;
+
+            Console.WriteLine("CP solver finished. CP Cmax: " + cpCmax);
+
             CpSolverRunner.PrintComparison(
                 result.bestCmax,
-                bestTabuCmax,
+                tabuResult.BestCmax,
                 cpCmax);
 
-            string outputPath =
-                @"Visualisation\Output\gantt_chart.html";
-
             GantChart.CreateHtml(
-                result.bestInstance,
-                outputPath,
-                result.bestRule.ToString(),
+                initialInstanceForChart,
+                initialOutputPath,
+                "Initial Heuristic - " + result.bestRule,
                 result.bestCmax,
                 "FEASIBLE");
 
-            Console.WriteLine();
-            Console.WriteLine("Gantt chart created:");
-            Console.WriteLine(outputPath);
+            GantChart.CreateHtml(
+                tabuResult.BestInstance,
+                tabuOutputPath,
+                "Tabu Search - " + tabuResult.BestNeighborhoodName,
+                tabuResult.BestCmax,
+                "FEASIBLE");
 
-            string fullPath =
-                Path.GetFullPath(outputPath);
+            if (cpResult.HasFeasibleSolution)
+            {
+                GantChart.CreateHtml(
+                    cpResult.BestInstance,
+                    cpOutputPath,
+                    "CP Solver",
+                    cpResult.Cmax,
+                    "OPTIMAL / BEST FOUND");
+            }
+
+            GantChart.CreateComparisonHtml(
+                comparisonOutputPath,
+                Path.GetFileName(initialOutputPath),
+                Path.GetFileName(tabuOutputPath),
+                Path.GetFileName(cpOutputPath),
+                result.bestRule.ToString(),
+                tabuResult.BestNeighborhoodName,
+                result.bestCmax,
+                tabuResult.BestCmax,
+                cpCmax);
+
+            Console.WriteLine();
+            Console.WriteLine("Comparison Gantt chart created:");
+            Console.WriteLine(comparisonOutputPath);
 
             Process.Start(new ProcessStartInfo
             {
-                FileName = fullPath,
+                FileName = Path.GetFullPath(comparisonOutputPath),
                 UseShellExecute = true
             });
         }
 
-        private static int RunTabuNeighborhoodExperiment(
+        private static TabuNeighborhoodExperimentResult RunTabuNeighborhoodExperiment(
             InitialHeuristicResult result)
         {
             Console.WriteLine();
@@ -144,16 +227,16 @@ namespace JobShopSchedulingFramework.Application
             Console.WriteLine();
 
             int maxIterations =
-                100;
+                5000;
 
             List<(string Name, INeighborhoodDefinition Neighborhood)> neighborhoods =
-            new List<(string Name, INeighborhoodDefinition Neighborhood)>
-            {
-                ("N1 - Adjacent Critical Block Swaps", new AdjacentSwapNeighborhood()),
-                ("N2 - Restricted First/Last Block Swaps", new RestrictedBlockSwapNeighborhood()),
-                ("N3 - All Pair Critical Block Swaps", new AllPairSwapNeighborhood()),
-                ("N4 - Critical Block Insert Moves", new CriticalBlockInsertNeighborhood())
-            };
+                new List<(string Name, INeighborhoodDefinition Neighborhood)>
+                {
+                    ("N1 - Adjacent Critical Block Swaps", new AdjacentSwapNeighborhood()),
+                    ("N2 - Restricted First/Last Block Swaps", new RestrictedBlockSwapNeighborhood()),
+                    ("N3 - All Pair Critical Block Swaps", new AllPairSwapNeighborhood()),
+                    ("N4 - Critical Block Insert Moves", new CriticalBlockInsertNeighborhood())
+                };
 
             Console.WriteLine(
                 "Neighborhood".PadRight(40) + " | " +
@@ -173,6 +256,9 @@ namespace JobShopSchedulingFramework.Application
             long bestRuntime =
                 0;
 
+            Instance bestTabuInstance =
+                null;
+
             foreach (var item in neighborhoods)
             {
                 Instance instanceCopy =
@@ -182,9 +268,9 @@ namespace JobShopSchedulingFramework.Application
                     Stopwatch.StartNew();
 
                 TabuSearchSolver tabuSearch =
-                new TabuSearchSolver(
-                maxIterations: maxIterations,
-                neighborhoodDefinition: item.Neighborhood);
+                    new TabuSearchSolver(
+                        maxIterations: maxIterations,
+                        neighborhoodDefinition: item.Neighborhood);
 
                 int tabuCmax =
                     tabuSearch.Run(instanceCopy);
@@ -216,6 +302,9 @@ namespace JobShopSchedulingFramework.Application
 
                     bestRuntime =
                         stopwatch.ElapsedMilliseconds;
+
+                    bestTabuInstance =
+                        CloneInstance(instanceCopy);
                 }
             }
 
@@ -224,11 +313,16 @@ namespace JobShopSchedulingFramework.Application
             Console.WriteLine("Best Tabu Cmax: " + bestTabuCmax);
             Console.WriteLine("Best runtime ms: " + bestRuntime);
 
-            return bestTabuCmax;
+            return new TabuNeighborhoodExperimentResult
+            {
+                BestInstance = bestTabuInstance,
+                BestCmax = bestTabuCmax,
+                BestNeighborhoodName = bestNeighborhoodName,
+                RuntimeMs = bestRuntime
+            };
         }
 
-        private static Instance CloneInstance(
-            Instance original)
+        private static Instance CloneInstance(Instance original)
         {
             Instance clone =
                 new Instance();
@@ -262,12 +356,10 @@ namespace JobShopSchedulingFramework.Application
                     clonedOperation.remainingProcessingTime =
                         originalOperation.remainingProcessingTime;
 
-                    clonedJob.Operations.Add(
-                        clonedOperation);
+                    clonedJob.Operations.Add(clonedOperation);
                 }
 
-                clone.Jobs.Add(
-                    clonedJob);
+                clone.Jobs.Add(clonedJob);
             }
 
             if (original.SetupTimes != null)
@@ -292,6 +384,14 @@ namespace JobShopSchedulingFramework.Application
             }
 
             return clone;
+        }
+
+        private class TabuNeighborhoodExperimentResult
+        {
+            public Instance BestInstance { get; set; }
+            public int BestCmax { get; set; }
+            public string BestNeighborhoodName { get; set; }
+            public long RuntimeMs { get; set; }
         }
     }
 }
