@@ -60,7 +60,7 @@ namespace JobShopSchedulingFramework.Application
                 if (choice == "2")
                 {
                     return Path.GetFullPath(
-                        Path.Combine(AppContext.BaseDirectory, @"..\..\..\Instances\Benchmark"));
+                        Path.Combine(AppContext.BaseDirectory, @"..\..\..\Instances\Benchmark\ClassroomInstancesSet4_2"));
                 }
 
                 Console.Write("Invalid input. Please enter 1 or 2: ");
