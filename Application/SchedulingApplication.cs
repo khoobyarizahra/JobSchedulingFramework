@@ -16,8 +16,16 @@ namespace JobShopSchedulingFramework.Application
         {
             PrintHeader();
 
-            string instanceFolder =
-                SelectInstanceSource();
+            string? instanceFolder =
+                SelectApplicationAction();
+
+            if (instanceFolder == null)
+            {
+                Console.WriteLine();
+                Console.WriteLine("Press any key to exit...");
+                Console.ReadKey();
+                return;
+            }
 
             Console.WriteLine("Instance selection starts now.");
             Console.WriteLine();
@@ -37,33 +45,48 @@ namespace JobShopSchedulingFramework.Application
             Console.ReadKey();
         }
 
-        private static string SelectInstanceSource()
+        private static string? SelectApplicationAction()
         {
-            Console.WriteLine("Select instance source:");
-            Console.WriteLine("1 - Generate new instances");
-            Console.WriteLine("2 - Use benchmark instances");
+            Console.WriteLine("Select action:");
+            Console.WriteLine("1 - Generate test instances");
+            Console.WriteLine("2 - Solve generated instances");
+            Console.WriteLine("3 - Solve benchmark instances");
+            Console.WriteLine("4 - Exit");
             Console.Write("Choice: ");
 
             while (true)
             {
-                string choice =
+                string? choice =
                     Console.ReadLine();
 
                 if (choice == "1")
                 {
-                    GenerateControlledInstances();
-
-                    return Path.GetFullPath(
-                        Path.Combine(AppContext.BaseDirectory, @"..\..\..\Instances\Generated"));
+                    GenerateTestInstances();
+                    return null;
                 }
 
                 if (choice == "2")
                 {
                     return Path.GetFullPath(
-                        Path.Combine(AppContext.BaseDirectory, @"..\..\..\Instances\Benchmark\ClassroomInstancesSet4_2"));
+                        Path.Combine(
+                            AppContext.BaseDirectory,
+                            @"..\..\..\Instances\Generated"));
                 }
 
-                Console.Write("Invalid input. Please enter 1 or 2: ");
+                if (choice == "3")
+                {
+                    return Path.GetFullPath(
+                        Path.Combine(
+                            AppContext.BaseDirectory,
+                            @"..\..\..\Instances\Benchmark"));
+                }
+
+                if (choice == "4")
+                {
+                    return null;
+                }
+
+                Console.Write("Invalid input. Please enter 1, 2, 3, or 4: ");
             }
         }
 
@@ -76,42 +99,34 @@ namespace JobShopSchedulingFramework.Application
             Console.WriteLine();
         }
 
-        private static void GenerateControlledInstances()
+        private static void GenerateTestInstances()
         {
-            int numberOfJobs = 10;
-            int numberOfMachines = 5;
-            InstanceType type = InstanceType.Normal;
-
-            int baseSeed = 42;
-            int numberOfInstances = 5;
-
             string outputFolder =
-               Path.GetFullPath(
-               Path.Combine(AppContext.BaseDirectory, @"..\..\..\Instances\Generated"));
+                Path.GetFullPath(
+                    Path.Combine(
+                        AppContext.BaseDirectory,
+                        @"..\..\..\Instances\Generated"));
 
             Directory.CreateDirectory(outputFolder);
 
-            InstanceWriter writer =
-                new InstanceWriter();
+            new TestInstanceGenerator(101, TestInstanceType.Partial)
+                .GenerateAndSave(10, 5, Path.Combine(outputFolder, "Team_Instance1_10x5_Partial.txt"));
 
-            for (int i = 1; i <= numberOfInstances; i++)
-            {
-                int seed = baseSeed + i;
+            new TestInstanceGenerator(102, TestInstanceType.Full)
+                .GenerateAndSave(10, 5, Path.Combine(outputFolder, "Team_Instance2_10x5_Full.txt"));
 
-                InstanceGeneratorAdvanced generator =
-                    new InstanceGeneratorAdvanced(seed, type);
+            new TestInstanceGenerator(103, TestInstanceType.Partial)
+                .GenerateAndSave(15, 10, Path.Combine(outputFolder, "Team_Instance3_15x10_Partial.txt"));
 
-                Instance instance =
-                    generator.Generate(numberOfJobs, numberOfMachines);
+            new TestInstanceGenerator(104, TestInstanceType.Full)
+                .GenerateAndSave(15, 10, Path.Combine(outputFolder, "Team_Instance4_15x10_Full.txt"));
 
-                string generatedFileName =
-                    $@"{outputFolder}\{type}_{numberOfJobs}x{numberOfMachines}_seed{seed}.txt";
+            new TestInstanceGenerator(105, TestInstanceType.Partial)
+                .GenerateAndSave(20, 15, Path.Combine(outputFolder, "Team_Instance5_20x15_Partial.txt"));
 
-                writer.WriteToFile(instance, generatedFileName);
-
-                Console.WriteLine("Generated: " + generatedFileName);
-            }
-
+            Console.WriteLine();
+            Console.WriteLine("Test instances generated successfully in:");
+            Console.WriteLine(outputFolder);
             Console.WriteLine();
         }
 
@@ -224,6 +239,11 @@ namespace JobShopSchedulingFramework.Application
                     result,
                     "N3 - All Pair Critical Block Swaps",
                     new AllPairSwapNeighborhood());
+            TabuNeighborhoodExperimentResult setupResult =
+                RunSingleFinalTabuSearch(
+                    result,
+                    "N5 - Setup Heavy Machine Moves",
+                    new SetupHeavyMachineNeighborhood());
 
             TabuNeighborhoodExperimentResult combinedResult =
                 RunSingleFinalTabuSearch(
@@ -235,6 +255,7 @@ namespace JobShopSchedulingFramework.Application
             Console.WriteLine("FINAL 90S TABU COMPARISON");
             Console.WriteLine("---------------------------------------");
             Console.WriteLine("N3 Cmax: " + n3Result.BestCmax);
+            Console.WriteLine("N5 Cmax: " + setupResult.BestCmax);
             Console.WriteLine("Combined Cmax: " + combinedResult.BestCmax);
 
             if (combinedResult.BestCmax <= n3Result.BestCmax)
@@ -313,13 +334,14 @@ namespace JobShopSchedulingFramework.Application
                 int.MaxValue;
 
             List<(string Name, INeighborhoodDefinition Neighborhood)> neighborhoods =
-                new List<(string Name, INeighborhoodDefinition Neighborhood)>
-                {
-                    ("N1 - Adjacent Critical Block Swaps", new AdjacentSwapNeighborhood()),
-                    ("N2 - Restricted First/Last Block Swaps", new RestrictedBlockSwapNeighborhood()),
-                    ("N3 - All Pair Critical Block Swaps", new AllPairSwapNeighborhood()),
-                    ("N4 - Critical Block Insert Moves", new CriticalBlockInsertNeighborhood())
-                };
+            new List<(string Name, INeighborhoodDefinition Neighborhood)>
+            {
+                ("N1 - Adjacent Critical Block Swaps", new AdjacentSwapNeighborhood()),
+                ("N2 - Restricted First/Last Block Swaps", new RestrictedBlockSwapNeighborhood()),
+                ("N3 - All Pair Critical Block Swaps", new AllPairSwapNeighborhood()),
+                ("N4 - Critical Block Insert Moves", new CriticalBlockInsertNeighborhood()),
+                ("N5 - Setup Heavy Machine Moves", new SetupHeavyMachineNeighborhood())
+             };
 
             Console.WriteLine(
                 "Neighborhood".PadRight(40) + " | " +

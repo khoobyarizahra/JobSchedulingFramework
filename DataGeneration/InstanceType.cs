@@ -1,21 +1,25 @@
 ﻿namespace JobShopSchedulingFramework.DataGeneration
 {
+
     /*
-     InstanceType
+  Defines the routing structure of a generated
+  Job Shop Scheduling instance.
 
-     Defines the different categories of artificial test instances.
+  Partial:
+  - A job visits only a subset of the available machines.
+  - The number of operations is smaller than or equal to
+    the number of machines.
 
-     It is separated from InstanceGeneratorAdvanced because:
-     - the enum is a configuration concept
-     - the generator should only contain generation logic
-     - other classes can reuse InstanceType later
-    */
-    public enum InstanceType
+  Full:
+  - A job visits every machine exactly once.
+  - The number of operations equals the number of machines.
+
+  The actual instance size is specified separately through
+  the number of jobs and machines.
+ */
+    public enum TestInstanceType
     {
-        Normal,              // Balanced processing times and moderate setup times
-        LongProcessingTimes, // Longer processing times
-        SetupHeavy,          // Higher setup times compared to processing times
-        BottleneckMachine,   // One Machine is used very often and becomes critical
-        MixedRealistic       // Mix of normal and long Operations
+        Partial,
+        Full
     }
 }
