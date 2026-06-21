@@ -17,12 +17,19 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
         // Maximale Anzahl von Iterationen der Tabu Search.
         private readonly int maxIterations;
 
-        // Definiert die verwendete Nachbarschaftsstruktur.
+        // Zeitlimit der Suche
         private readonly int timeLimitSeconds;
+
+        // Einzige, feste Nachbarschaftsstruktur (keine variable Nachbarschaft).
+        private readonly INeighborhoodDefinition neighborhood;
+
+        /* Entfernt:
         private readonly INeighborhoodDefinition mainNeighborhood;
         private readonly INeighborhoodDefinition diversificationNeighborhood;
         private int iterationsWithoutImprovement;
         private const int StagnationLimit = 300;
+        */
+
 
         public TabuSearchSolver(
         int maxIterations,
@@ -32,10 +39,17 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             this.maxIterations = maxIterations;
             this.timeLimitSeconds = timeLimitSeconds;
 
+            //NEU
+            neighborhood = neighborhoodDefinition;
+        }
+
+
+        /* Entfernt
             mainNeighborhood = neighborhoodDefinition;
             diversificationNeighborhood = new CriticalBlockInsertNeighborhood();
             iterationsWithoutImprovement = 0;
              }
+        */
 
         /// <summary>
         /// Führt die Tabu Search auf der übergebenen Instanz aus
@@ -91,16 +105,33 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 
             Console.WriteLine(new string('-', 95));
 
-            // Hauptschleife der Tabu Search.
-            for (int iteration = 1; iteration <= maxIterations; iteration++)
-            {
-                if (stopwatch.Elapsed.TotalSeconds >= timeLimitSeconds)
-                {
-                    Console.WriteLine(
-                        $"Time limit reached after {stopwatch.Elapsed.TotalSeconds:F2} seconds.");
+            // Zähler für Iterationen nd Iteration ohne Verbesserung
+            int iteration = 0;
+int iterationsSinceImprovement = 0;
 
-                    break;
-                }
+
+            while (
+    iteration < maxIterations &&
+    iterationsSinceImprovement < 2000 &&
+    stopwatch.Elapsed.TotalSeconds < timeLimitSeconds)
+{
+    iteration++;
+
+               
+
+
+                /* Enternt 
+                                // Hauptschleife der Tabu Search.
+                                for (int iteration = 1; iteration <= maxIterations; iteration++)
+                            {
+                                if (stopwatch.Elapsed.TotalSeconds >= timeLimitSeconds)
+                                {
+                                    Console.WriteLine(
+                                        $"Time limit reached after {stopwatch.Elapsed.TotalSeconds:F2} seconds.");
+
+                                    break;
+                                }
+                */
 
                 // Aktualisiert die Tabu-Dauer in regelmäßigen Abständen.
                 tabuList.UpdateTenureIfNeeded(iteration);
@@ -123,6 +154,9 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         $"Critical operations: {analysisResult.criticalOperations.Count}");
                 }
 
+            
+                /* Diversifizierung enfernt:
+                 *
                 bool useDiversification =
                 iterationsWithoutImprovement >= StagnationLimit;
 
@@ -147,28 +181,31 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         diversificationNeighborhood.GetType().Name);
                     Console.WriteLine();
                 }
-
+                */
                 List<Move> moves =
-                    activeNeighborhood.GenerateMoves(
+                    neighborhood.GenerateMoves(
                         instance,
                         currentOrders,
                         criticalBlocks);
+
+
 
                 if (iteration <= 10 || iteration % 100 == 0)
                 {
                     Console.WriteLine(
                         "Iteration " + iteration +
-                        " | Neighborhood: " + activeNeighborhood.GetType().Name +
+                        " | Neighborhood: " + neighborhood.GetType().Name +
                         " | Critical blocks: " + criticalBlocks.Count +
                         " | Generated moves: " + moves.Count);
                 }
-
+    
+                
                 if (moves.Count == 0)
                 {
                     Console.WriteLine("No neighborhood moves found.");
                     break;
                 }
-
+                
                 Move bestMove = null;
                 int bestCandidateCmax = int.MaxValue;
                 int bestCandidateEvaluationValue = int.MaxValue;
@@ -176,7 +213,12 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 Dictionary<int, List<Operation>> bestCandidateOrders =
                     null;
 
+
+
+
                 // Alle Kandidatenlösungen untersuchen.
+      
+
                 foreach (Move move in moves)
                 {
                     // Kopie der aktuellen Lösung erzeugen.
@@ -205,7 +247,8 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                             move,
                             iteration,
                             candidateCmax,
-                            bestCmax);
+                            bestCmax,
+                            currentCmax);
 
                     if (isTabu)
                     {
@@ -217,25 +260,51 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         tabuList.GetFrequencyPenalty(move);
 
                     // Bewertungsfunktion der Tabu Search.
-                    int candidateEvaluationValue =
-                        candidateCmax + frequencyPenalty;
 
+                    //statisch
+                    /*
+                    int candidateEvaluationValue =
+                        candidateCmax + 15 * frequencyPenalty;
+                    */
+
+                    //Cmax abhängig
+                    double penaltyWeight = candidateCmax * 0.03;
+
+                     double candidateEvaluationValue =
+                         candidateCmax +
+                         penaltyWeight * frequencyPenalty;
+                   
+                    
+
+                    //Anzahl Mschienen & Jobs abhängig
+                    /*  int penaltyWeight =
+                          (int)Math.Round(
+                              Math.Sqrt(instance.NumJobs * instance.NumMachines));
+
+                      int candidateEvaluationValue =
+                          candidateCmax +
+                              penaltyWeight * frequencyPenalty;
+                     */
                     // Besten zulässigen Kandidaten auswählen.
                     if (candidateEvaluationValue <
-                        bestCandidateEvaluationValue)
-                    {
-                        bestCandidateEvaluationValue =
-                            candidateEvaluationValue;
+                                  bestCandidateEvaluationValue)
+                                      {
+                                          bestCandidateEvaluationValue =
+                                              candidateEvaluationValue;
 
-                        bestCandidateCmax =
-                            candidateCmax;
+                                            bestCandidateCmax =
+                                                candidateCmax;
 
-                        bestMove =
-                            move;
+                                            bestMove =
+                                                move;
+                               
+                                           bestCandidateOrders =
+                                              candidateOrders;
+                                        }
+                
+            
+                  
 
-                        bestCandidateOrders =
-                            candidateOrders;
-                    }
                 }
                 //Debug
                 if (iteration <= 10 || iteration % 100 == 0)
@@ -249,7 +318,8 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                     bestCandidateOrders == null)
                 {
                     Console.WriteLine("No admissible move found.");
-                    break;
+                    iterationsSinceImprovement++;
+                    continue;
                 }
 
                 // Zur besten Nachbarlösung wechseln.
@@ -263,35 +333,45 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 tabuList.RegisterMove(
                     bestMove,
                     iteration);
-                if (useDiversification)
-                {
-                    iterationsWithoutImprovement = 0;
-                }
-
                 // Globale Bestlösung aktualisieren.
                 // If the current solution improves the global best solution,
                 // the stagnation counter is reset. Otherwise, it is increased.
-                // Once the counter reaches the stagnation limit, the solver
-                // temporarily switches from the main neighborhood to the
-                // diversification neighborhood.
                 if (currentCmax < bestCmax)
                 {
-                    bestCmax =
-                        currentCmax;
+                    bestCmax = currentCmax;
 
                     bestOrders =
-                        ScheduleOrderHelper.CopyMachineOrders(
-                            currentOrders);
+                        ScheduleOrderHelper.CopyMachineOrders(currentOrders);
 
-                    iterationsWithoutImprovement = 0;
+                    iterationsSinceImprovement = 0;   // nur hier reset
                 }
                 else
                 {
-                    iterationsWithoutImprovement++;
+                    iterationsSinceImprovement++;
                 }
 
-                if (iteration <= 10 || iteration % 100 == 0)
+
+                    /* Entfernt Dviersifikation:
+                    if (useDiversification)
+                    {
+                        iterationsWithoutImprovement = 0;
+                    }
+                    */
+
+
+                    /* Diversifikation entfernt:
+                                        iterationsWithoutImprovement = 0;
+                                    }
+                                    else
+                                    {
+                                        iterationsWithoutImprovement++;
+                                    }
+                    */
+
+
+                    if (iteration <= 10 || iteration % 100 == 0)
                 {
+
                     Console.WriteLine(
                         iteration.ToString().PadRight(8) + " | " +
                         currentCmax.ToString().PadRight(10) + " | " +
@@ -357,6 +437,10 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             operationsOnMachine[move.MachineIndex2] =
                 temp;
         }
+
+
+
+
         private void PrintMachineOrder(
     Dictionary<int, List<Operation>> machineOrders)
         {

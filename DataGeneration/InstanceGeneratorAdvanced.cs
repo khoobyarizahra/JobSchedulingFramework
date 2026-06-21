@@ -17,6 +17,14 @@ namespace JobShopSchedulingFramework.DataGeneration
      - It uses the existing model classes from the Models folder.
      - Therefore the project has one shared data structure.
     */
+    public enum InstanceType
+    {
+        Normal,
+        LongProcessingTimes,
+        SetupHeavy,
+        BottleneckMachine,
+        MixedRealistic
+    }
     public class InstanceGeneratorAdvanced
     {
         // Random object for reproducible random numbers.
@@ -308,3 +316,4 @@ namespace JobShopSchedulingFramework.DataGeneration
         }
     }
 }
+

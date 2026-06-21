@@ -75,7 +75,7 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             minTenure =
                 Math.Max(
                     1,
-                    (int)Math.Round(baseTenure * 0.8));
+                   (int)Math.Round(baseTenure * 0.8));
 
             maxTenure =
                 Math.Max(
@@ -161,14 +161,31 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             Move move,
             int iteration,
             int candidateMakespan,
-            int bestMakespan)
+            int bestMakespan,
+            int currentCmax)
         {
             // Aspiration Criterion:
             // Verbesserungen dürfen trotz Tabu ausgeführt werden.
-            if (candidateMakespan < bestMakespan)
+           if (candidateMakespan < bestMakespan)
             {
                 return false;
             }
+
+          //TEST
+          /*  const int aspirationThreshold = 3;
+
+            if (candidateMakespan <= bestMakespan + aspirationThreshold)
+            {
+                return false;
+            }
+            //TEST
+            */
+            //TEST 2
+            /*if (candidateMakespan < currentCmax)
+            {
+                return false;
+            }*/
+            //TEST"
 
             string reverseKey =
                 move.GetReverseKey();
@@ -229,6 +246,8 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 
             return moveFrequency[moveKey];
         }
+    
+
 
         /// <summary>
         /// Gibt die aktuell verwendete dynamische Tenure zurück.
