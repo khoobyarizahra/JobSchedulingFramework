@@ -43,7 +43,7 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
                                 movedOperation.OperationID,
                                 targetOperation.JobID,
                                 targetOperation.OperationID);
-                        
+
                         move.IsInsertMove = true;
 
                         moves.Add(move);

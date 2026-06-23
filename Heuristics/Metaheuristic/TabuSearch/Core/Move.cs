@@ -58,6 +58,15 @@
 
         public override string ToString()
         {
+            if (IsInsertMove)
+            {
+                return
+                    "Machine " + Machine +
+                    " | Insert J" + FirstJob + "O" + FirstOperation +
+                    " from " + MachineIndex1 +
+                    " to " + MachineIndex2;
+            }
+
             return
                 "Machine " + Machine +
                 " | Swap J" + FirstJob + "O" + FirstOperation +

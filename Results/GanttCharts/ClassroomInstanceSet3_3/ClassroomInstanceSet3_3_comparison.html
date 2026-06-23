@@ -1,0 +1,55 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    margin: 20px;
+}
+
+.summary {
+    border: 1px solid #cccccc;
+    background: #f7f7f7;
+    padding: 12px;
+    margin-bottom: 25px;
+}
+
+iframe {
+    width: 100%;
+    height: 620px;
+    border: 1px solid #cccccc;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Initial Heuristic vs Tabu Search</h1>
+
+<div class="summary">
+<b>Initial heuristic:</b> SetupAwareLRPT<br>
+<b>Initial Cmax:</b> 927<br><br>
+
+<b>Tabu Search:</b> N3 - All Pair Critical Block Swaps - 90s<br>
+<b>Tabu Cmax:</b> 837<br><br>
+
+<b>CP Solver:</b> Optimal / Best Found Solution<br>
+<b>CP Cmax:</b> 828<br>
+<b>Gap Tabu to CP:</b> 9 (1,09%)<br><br>
+
+<b>Tabu Improvement:</b> 90 (9,71%)
+</div>
+
+<h2>Initial Heuristic Schedule</h2>
+<iframe src="ClassroomInstanceSet3_3_initial_heuristic.html"></iframe>
+
+<h2>Tabu Search Schedule</h2>
+<iframe src="ClassroomInstanceSet3_3_tabu_search_90s.html"></iframe>
+
+<h2>CP Solver Schedule</h2>
+<iframe src="ClassroomInstanceSet3_3_cp_solver.html"></iframe>
+
+</body>
+</html>
