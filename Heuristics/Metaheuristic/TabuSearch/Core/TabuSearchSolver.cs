@@ -21,34 +21,16 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
     /// </summary>
     public class TabuSearchSolver
     {
-        // Maximum number of iterations used when no time limit is active.
         private readonly int maxIterations;
-
-        // Time limit in seconds.
-        // If this value is greater than zero, the time limit controls the search.
-        // If this value is zero, the solver runs without a fixed time limit
-        // and stops only when maxIterations is reached.
         private readonly int timeLimitSeconds;
-
-        // Neighborhood structure used to generate moves.
         private readonly INeighborhoodDefinition neighborhood;
 
-        // Number of moves that are evaluated exactly after the fast preselection.
         private const int MaxExactEvaluationsPerIteration = 20;
-
-        // Controls how much information is printed during the search.
-        // false = compact final output
-        // true  = detailed debugging output
         private const bool VerboseOutput = false;
-
-        // In verbose mode, detailed information is printed only every n iterations.
         private const int VerbosePrintInterval = 1000;
 
-        // Restart is triggered after a long phase without improving the global best solution.
+        // Restart is triggered after operationCount * factor iterations without global improvement.
         private const int RestartAfterNoImprovementFactor = 25;
-
-        // Number of random swaps used to perturb the best known solution during a restart.
-        private const int RestartPerturbationMoves = 30;
 
         // Fixed seed for reproducible restart perturbations.
         private readonly Random restartRandom = new Random(123);
@@ -63,9 +45,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             neighborhood = neighborhoodDefinition;
         }
 
-        /// <summary>
-        /// Runs the Tabu Search on the given instance and returns the best makespan found.
-        /// </summary>
         public int Run(Instance instance)
         {
             Stopwatch stopwatch =
@@ -73,20 +52,29 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 
             bool useTimeLimit =
                 timeLimitSeconds > 0;
+
             int operationCount =
                 instance.Jobs.Sum(job => job.Operations.Count);
 
             int restartAfterNoImprovement =
                 operationCount * RestartAfterNoImprovementFactor;
-            Console.WriteLine(
-             "Restart threshold: " +
-             restartAfterNoImprovement);
 
-            // Build the initial machine orders from the current schedule stored in the instance.
+            int restartPerturbationMoves =
+                Math.Max(
+                    3,
+                    operationCount / 20);
+
+            Console.WriteLine(
+                "Restart threshold: " +
+                restartAfterNoImprovement);
+
+            Console.WriteLine(
+                "Restart perturbation moves: " +
+                restartPerturbationMoves);
+
             Dictionary<int, List<Operation>> currentOrders =
                 ScheduleOrderHelper.BuildMachineOrders(instance);
 
-            // Recalculate the initial schedule to ensure that the starting solution is feasible.
             bool initialFeasible =
                 ScheduleOrderHelper.RecalculateScheduleFromMachineOrders(
                     instance,
@@ -99,7 +87,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                     "Initial schedule infeasible.");
             }
 
-            // The initial solution is the best known solution at the beginning.
             int initialCmax =
                 currentCmax;
 
@@ -110,7 +97,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 ScheduleOrderHelper.CopyMachineOrders(
                     currentOrders);
 
-            // The tabu list stores forbidden moves and long-term frequency information.
             MoveTabuList tabuList =
                 new MoveTabuList(
                     instance.NumJobs,
@@ -120,12 +106,9 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             int iteration =
                 0;
 
-            // Counts how many iterations have passed since the last global improvement.
-            // This value is used for restart decisions and for the dynamic frequency penalty.
             int iterationsSinceImprovement =
                 0;
 
-            // Counts all performed restarts.
             int restartCount =
                 0;
 
@@ -153,17 +136,14 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             {
                 iteration++;
 
-                // Update the dynamic tabu tenure if the configured update interval is reached.
                 tabuList.UpdateTenureIfNeeded(
                     iteration);
 
-                // Analyze the current solution and compute critical operations.
                 CriticalOperationAnalysisResult analysisResult =
                     CriticalOperationAnalyzer.Analyze(
                         instance,
                         currentOrders);
 
-                // Group critical operations into critical blocks on the machines.
                 List<CriticalBlock> criticalBlocks =
                     CriticalBlockBuilder.BuildCriticalBlocks(
                         currentOrders,
@@ -177,7 +157,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         analysisResult.criticalOperations.Count);
                 }
 
-                // Generate all neighborhood moves based on the selected neighborhood definition.
                 List<Move> moves =
                     neighborhood.GenerateMoves(
                         instance,
@@ -204,10 +183,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                     break;
                 }
 
-                // Fast preselection:
-                // Instead of recalculating a complete schedule for every generated move,
-                // each move is first estimated cheaply using release/tail information.
-                // Only the most promising moves are evaluated exactly afterwards.
                 int exactEvaluationLimit =
                     Math.Min(
                         MaxExactEvaluationsPerIteration,
@@ -246,9 +221,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 Dictionary<int, List<Operation>> bestCandidateOrders =
                     null;
 
-                // Exact evaluation:
-                // Only the preselected moves are applied to a copied machine order
-                // and evaluated by recalculating the full schedule.
                 foreach (Move move in promisingMoves)
                 {
                     Dictionary<int, List<Operation>> candidateOrders =
@@ -270,8 +242,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         continue;
                     }
 
-                    // Tabu check:
-                    // A tabu move is skipped unless the aspiration criterion allows it.
                     bool isTabu =
                         tabuList.IsTabu(
                             move,
@@ -285,9 +255,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         continue;
                     }
 
-                    // Long-term memory:
-                    // Moves that have been used frequently receive a penalty.
-                    // The penalty becomes stronger if the search stagnates.
                     int frequencyPenalty =
                         tabuList.GetFrequencyPenalty(
                             move);
@@ -300,7 +267,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         candidateCmax +
                         candidateCmax * penaltyRate * frequencyPenalty;
 
-                    // Select the admissible candidate with the best penalized evaluation value.
                     if (candidateEvaluationValue < bestCandidateEvaluationValue)
                     {
                         bestCandidateEvaluationValue =
@@ -325,7 +291,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         bestCandidateCmax);
                 }
 
-                // If no admissible move was found, the search continues with the same solution.
                 if (bestMove == null ||
                     bestCandidateOrders == null)
                 {
@@ -338,19 +303,16 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                     continue;
                 }
 
-                // Move to the selected neighboring solution.
                 currentOrders =
                     bestCandidateOrders;
 
                 currentCmax =
                     bestCandidateCmax;
 
-                // Register the performed move in the tabu list.
                 tabuList.RegisterMove(
                     bestMove,
                     iteration);
 
-                // Update the global best solution if the current solution improved it.
                 if (currentCmax < bestCmax)
                 {
                     bestCmax =
@@ -368,10 +330,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                     iterationsSinceImprovement++;
                 }
 
-                // Restart / diversification:
-                // If the global best solution has not improved for a long time,
-                // the current search trajectory is restarted from a perturbed version
-                // of the best known solution.
                 if (iterationsSinceImprovement >= restartAfterNoImprovement)
                 {
                     restartCount++;
@@ -380,10 +338,9 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         RestartFromBestSolution(
                             instance,
                             bestOrders,
+                            restartPerturbationMoves,
                             out currentCmax);
 
-                    // Clear only the short-term tabu restrictions.
-                    // The long-term move frequencies remain stored in the tabu list.
                     tabuList.ClearShortTermMemory();
 
                     iterationsSinceImprovement =
@@ -419,8 +376,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 
             stopwatch.Stop();
 
-            // Recalculate the best schedule once more so that all operation start and end times
-            // are consistent with the stored best machine order.
             ScheduleOrderHelper.RecalculateScheduleFromMachineOrders(
                 instance,
                 bestOrders,
@@ -443,13 +398,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             return bestCmax;
         }
 
-        /// <summary>
-        /// Decides whether the search should continue.
-        ///
-        /// In the 90-second mode, the time limit controls the loop.
-        /// In the extended mode, no fixed time limit is used.
-        /// The search then stops only when the maximum number of iterations is reached.
-        /// </summary>
         private bool ShouldContinueSearch(
             bool useTimeLimit,
             Stopwatch stopwatch,
@@ -463,9 +411,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             return iteration < maxIterations;
         }
 
-        /// <summary>
-        /// Defines when detailed iteration information should be printed in verbose mode.
-        /// </summary>
         private static bool ShouldPrintIterationDetails(
             int iteration)
         {
@@ -473,11 +418,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                    iteration % VerbosePrintInterval == 0;
         }
 
-        /// <summary>
-        /// Returns the penalty rate for the long-term frequency memory.
-        /// The longer the search has not improved the global best solution,
-        /// the stronger the diversification pressure becomes.
-        /// </summary>
         private static double GetPenaltyRate(
             int iterationsSinceImprovement)
         {
@@ -494,20 +434,10 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             return 0.03;
         }
 
-        /// <summary>
-        /// Creates a restart solution from the best known machine order.
-        ///
-        /// The method copies the best known solution and applies a number of
-        /// random swaps on machine sequences. This keeps the restart close to a
-        /// good solution but moves the search to a different region of the search space.
-        ///
-        /// If the perturbed solution is infeasible, the method retries with a new
-        /// perturbation. If no feasible perturbation is found, it falls back to the
-        /// unchanged best known solution.
-        /// </summary>
         private Dictionary<int, List<Operation>> RestartFromBestSolution(
             Instance instance,
             Dictionary<int, List<Operation>> bestOrders,
+            int restartPerturbationMoves,
             out int restartCmax)
         {
             const int maxRestartAttempts = 20;
@@ -520,7 +450,7 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 
                 ApplyRandomPerturbation(
                     restartOrders,
-                    RestartPerturbationMoves);
+                    restartPerturbationMoves);
 
                 bool feasible =
                     ScheduleOrderHelper.RecalculateScheduleFromMachineOrders(
@@ -534,8 +464,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 }
             }
 
-            // Fallback:
-            // If all perturbation attempts fail, continue from the best known solution.
             Dictionary<int, List<Operation>> fallbackOrders =
                 ScheduleOrderHelper.CopyMachineOrders(
                     bestOrders);
@@ -548,13 +476,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             return fallbackOrders;
         }
 
-        /// <summary>
-        /// Applies random swaps inside machine sequences.
-        ///
-        /// Only machines with at least two operations are considered.
-        /// The swaps are deliberately simple because the schedule feasibility
-        /// is checked afterwards by RecalculateScheduleFromMachineOrders.
-        /// </summary>
         private void ApplyRandomPerturbation(
             Dictionary<int, List<Operation>> machineOrders,
             int numberOfSwaps)
@@ -601,12 +522,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             }
         }
 
-        /// <summary>
-        /// Applies a move to a machine order.
-        ///
-        /// For swap moves, two operations on the same machine are exchanged.
-        /// For insert moves, one operation is removed and inserted at another position.
-        /// </summary>
         private void ApplyMove(
             Dictionary<int, List<Operation>> machineOrders,
             Move move)
@@ -625,8 +540,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 int targetIndex =
                     move.MachineIndex2;
 
-                // After removing an operation before the target position,
-                // the target index must be shifted by one.
                 if (move.MachineIndex1 < move.MachineIndex2)
                 {
                     targetIndex--;
@@ -661,10 +574,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 temp;
         }
 
-        /// <summary>
-        /// Prints a compact final summary.
-        /// This is the normal output used for the final evaluation.
-        /// </summary>
         private static void PrintCompactSummary(
             bool useTimeLimit,
             int initialCmax,
@@ -691,11 +600,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             Console.WriteLine("---------------------------------------");
         }
 
-        /// <summary>
-        /// Prints the final machine order of the best solution.
-        /// This output is useful for debugging and for checking the final sequence manually.
-        /// It is only printed when VerboseOutput is enabled.
-        /// </summary>
         private void PrintMachineOrder(
             Dictionary<int, List<Operation>> machineOrders)
         {
