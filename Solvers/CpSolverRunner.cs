@@ -8,8 +8,8 @@ namespace JobShopSchedulingFramework.ExactSolvers
     public static class CpSolverRunner
     {
         public static CpSolverResult Run(
-    Instance instance,
-    int timeLimitSeconds)
+            Instance instance,
+            int timeLimitSeconds)
         {
             CpSatJobShopSolver solver =
                 new CpSatJobShopSolver();
@@ -23,11 +23,13 @@ namespace JobShopSchedulingFramework.ExactSolvers
             {
                 PrintMachineOrder(instance);
             }
+            Console.WriteLine("DEBUG CP status in CpSolverRunner: " + solver.LastStatus);
 
             return new CpSolverResult
             {
                 BestInstance = instance,
-                Cmax = cpCmax
+                Cmax = cpCmax,
+                Status = solver.LastStatus
             };
         }
 

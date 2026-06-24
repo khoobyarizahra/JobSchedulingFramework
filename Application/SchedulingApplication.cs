@@ -255,7 +255,8 @@ namespace JobShopSchedulingFramework.Application
                 CpSolverRunner.Run(
                     CloneInstance(result.bestInstance),
                     timeLimitSeconds: 90);
-
+            Console.WriteLine("DEBUG CP status in SchedulingApplication: " + cpResult.Status);
+            Console.WriteLine("DEBUG CP has feasible solution: " + cpResult.HasFeasibleSolution);
             int cpCmax =
                 cpResult.Cmax;
 
@@ -308,15 +309,16 @@ namespace JobShopSchedulingFramework.Application
             }
 
             GantChart.CreateComparisonHtml(
-                comparisonOutputPath,
-                Path.GetFileName(initialOutputPath),
-                Path.GetFileName(bestTabuOutputPath),
-                Path.GetFileName(cpOutputPath),
-                result.bestRule.ToString(),
-                bestTabuResult.BestNeighborhoodName + " - " + bestTabuResult.RunLabel,
-                result.bestCmax,
-                bestTabuResult.BestCmax,
-                cpCmax);
+            comparisonOutputPath,
+            Path.GetFileName(initialOutputPath),
+            Path.GetFileName(bestTabuOutputPath),
+            Path.GetFileName(cpOutputPath),
+            result.bestRule.ToString(),
+            bestTabuResult.BestNeighborhoodName + " - " + bestTabuResult.RunLabel,
+            result.bestCmax,
+            bestTabuResult.BestCmax,
+            cpCmax,
+            cpResult.Status);
 
             PrintFinalSummary(
                 result,
@@ -589,7 +591,8 @@ namespace JobShopSchedulingFramework.Application
                     "CP Solver".PadRight(40) +
                     " | Cmax: " +
                     cpResult.Cmax.ToString().PadRight(8) +
-                    " | Status: FEASIBLE");
+                    " | Status: " +
+                    cpResult.Status);
             }
             else
             {

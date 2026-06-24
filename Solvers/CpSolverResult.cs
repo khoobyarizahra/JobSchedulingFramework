@@ -8,6 +8,8 @@ namespace JobShopSchedulingFramework.ExactSolvers
 
         public int Cmax { get; set; }
 
+        public string Status { get; set; } = "UNKNOWN";
+
         public bool HasFeasibleSolution
         {
             get

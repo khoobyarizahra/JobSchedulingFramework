@@ -3,12 +3,12 @@ using JobShopSchedulingFramework.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace JobShopSchedulingFramework.ExactSolvers
 {
     public class CpSatJobShopSolver
     {
+        public string LastStatus { get; private set; } = "UNKNOWN";
         public int Solve(
             Instance instance,
             int timeLimitSeconds)
@@ -41,10 +41,14 @@ namespace JobShopSchedulingFramework.ExactSolvers
                 IntVar end =
                     model.NewIntVar(0, horizon, "end_" + name);
 
-                startVars[operation] = start;
-                endVars[operation] = end;
+                startVars[operation] =
+                    start;
 
-                model.Add(end == start + operation.ProcessingTime);
+                endVars[operation] =
+                    end;
+
+                model.Add(
+                    end == start + operation.ProcessingTime);
             }
 
             AddJobPrecedenceConstraints(
@@ -79,7 +83,8 @@ namespace JobShopSchedulingFramework.ExactSolvers
                 makespan,
                 lastOperationEnds);
 
-            model.Minimize(makespan);
+            model.Minimize(
+                makespan);
 
             CpSolver solver =
                 new CpSolver();
@@ -89,27 +94,13 @@ namespace JobShopSchedulingFramework.ExactSolvers
 
             CpSolverStatus status =
                 solver.Solve(model);
-            if (status == CpSolverStatus.Optimal ||
-            status == CpSolverStatus.Feasible)
-            {
-                foreach (Operation operation in operations)
-                {
-                    operation.StartTime =
-                        (int)solver.Value(startVars[operation]);
-
-                    operation.EndTime =
-                        (int)solver.Value(endVars[operation]);
-                }
-
-                return (int)solver.ObjectiveValue;
-            }
-
-            return int.MaxValue;
+            LastStatus =
+            status.ToString();
 
             Console.WriteLine();
             Console.WriteLine("CP-SAT SOLVER");
             Console.WriteLine("Status: " + status);
-            Console.WriteLine("Runtime seconds: " + solver.WallTime());
+            Console.WriteLine("Runtime seconds: " + solver.WallTime().ToString("F2"));
 
             if (status == CpSolverStatus.Optimal ||
                 status == CpSolverStatus.Feasible)
@@ -153,7 +144,9 @@ namespace JobShopSchedulingFramework.ExactSolvers
                     for (int j = 0; j < instance.SetupTimes.GetLength(1); j++)
                     {
                         maxSetup =
-                            Math.Max(maxSetup, instance.SetupTimes[i, j]);
+                            Math.Max(
+                                maxSetup,
+                                instance.SetupTimes[i, j]);
                     }
                 }
             }
@@ -217,19 +210,25 @@ namespace JobShopSchedulingFramework.ExactSolvers
                                 $"J{first.JobID}O{first.OperationID}_before_J{second.JobID}O{second.OperationID}");
 
                         int setupFirstSecond =
-                            GetSetupTime(instance, first.JobID, second.JobID);
+                            GetSetupTime(
+                                instance,
+                                first.JobID,
+                                second.JobID);
 
                         int setupSecondFirst =
-                            GetSetupTime(instance, second.JobID, first.JobID);
+                            GetSetupTime(
+                                instance,
+                                second.JobID,
+                                first.JobID);
 
                         model.Add(
-                            startVars[second] >=
-                            endVars[first] + setupFirstSecond)
+                                startVars[second] >=
+                                endVars[first] + setupFirstSecond)
                             .OnlyEnforceIf(firstBeforeSecond);
 
                         model.Add(
-                            startVars[first] >=
-                            endVars[second] + setupSecondFirst)
+                                startVars[first] >=
+                                endVars[second] + setupSecondFirst)
                             .OnlyEnforceIf(firstBeforeSecond.Not());
                     }
                 }

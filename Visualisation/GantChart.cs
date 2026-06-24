@@ -268,15 +268,16 @@ namespace JobShopSchedulingFramework.Visualisation
         </html>";
         }
         public static void CreateComparisonHtml(
-        string outputPath,
-        string initialChartFile,
-        string tabuChartFile,
-        string cpChartFile,
-        string initialAlgorithmName,
-        string tabuAlgorithmName,
-        int initialCmax,
-        int tabuCmax,
-        int cpCmax)
+    string outputPath,
+    string initialChartFile,
+    string tabuChartFile,
+    string cpChartFile,
+    string initialAlgorithmName,
+    string tabuAlgorithmName,
+    int initialCmax,
+    int tabuCmax,
+    int cpCmax,
+    string cpStatus)
         {
             int improvement =
                 initialCmax - tabuCmax;
@@ -285,8 +286,9 @@ namespace JobShopSchedulingFramework.Visualisation
                 initialCmax > 0
                     ? (double)improvement / initialCmax * 100.0
                     : 0.0;
+
             int gapToCp =
-            tabuCmax - cpCmax;
+                tabuCmax - cpCmax;
 
             double gapToCpPercent =
                 cpCmax > 0
@@ -294,58 +296,58 @@ namespace JobShopSchedulingFramework.Visualisation
                     : 0.0;
 
             string html =
-  @"<!DOCTYPE html>
+        $@"<!DOCTYPE html>
 <html>
 <head>
 <meta charset=""utf-8"">
 <style>
-body {
+body {{
     font-family: Helvetica, Arial, sans-serif;
     font-size: 13px;
     margin: 20px;
-}
+}}
 
-.summary {
+.summary {{
     border: 1px solid #cccccc;
     background: #f7f7f7;
     padding: 12px;
     margin-bottom: 25px;
-}
+}}
 
-iframe {
+iframe {{
     width: 100%;
     height: 620px;
     border: 1px solid #cccccc;
-}
+}}
 </style>
 </head>
 
 <body>
 
-<h1>Initial Heuristic vs Tabu Search</h1>
+    <h1>Initial Heuristic vs Tabu Search</h1>
 
-<div class=""summary"">
-<b>Initial heuristic:</b> " + WebUtility.HtmlEncode(initialAlgorithmName) + @"<br>
-<b>Initial Cmax:</b> " + initialCmax + @"<br><br>
+    <div class=""summary"">
+    <b>Initial heuristic:</b> {WebUtility.HtmlEncode(initialAlgorithmName)}<br>
+    <b>Initial Cmax:</b> {initialCmax}<br><br>
 
-<b>Tabu Search:</b> " + WebUtility.HtmlEncode(tabuAlgorithmName) + @"<br>
-<b>Tabu Cmax:</b> " + tabuCmax + @"<br><br>
+    <b>Tabu Search:</b> {WebUtility.HtmlEncode(tabuAlgorithmName)}<br>
+    <b>Tabu Cmax:</b> {tabuCmax}<br><br>
 
-<b>CP Solver:</b> Optimal / Best Found Solution<br>
-<b>CP Cmax:</b> " + cpCmax + @"<br>
-<b>Gap Tabu to CP:</b> " + gapToCp + @" (" + gapToCpPercent.ToString("F2") + @"%)<br><br>
+    <b>CP Solver:</b> {WebUtility.HtmlEncode(cpStatus)}<br>
+    <b>CP Cmax:</b> {cpCmax}<br>
+    <b>Gap Tabu to CP:</b> {gapToCp} ({gapToCpPercent:F2}%)<br><br>
 
-<b>Tabu Improvement:</b> " + improvement + @" (" + improvementPercent.ToString("F2") + @"%)
-</div>
+    <b>Tabu Improvement:</b> {improvement} ({improvementPercent:F2}%)
+    </div>
 
-<h2>Initial Heuristic Schedule</h2>
-<iframe src=""" + WebUtility.HtmlEncode(initialChartFile) + @"""></iframe>
+    <h2>Initial Heuristic Schedule</h2>
+    <iframe src=""{WebUtility.HtmlEncode(initialChartFile)}""></iframe>
 
-<h2>Tabu Search Schedule</h2>
-<iframe src=""" + WebUtility.HtmlEncode(tabuChartFile) + @"""></iframe>
+    <h2>Tabu Search Schedule</h2>
+    <iframe src=""{WebUtility.HtmlEncode(tabuChartFile)}""></iframe>
 
-<h2>CP Solver Schedule</h2>
-<iframe src=""" + WebUtility.HtmlEncode(cpChartFile) + @"""></iframe>
+    <h2>CP Solver Schedule</h2>
+    <iframe src=""{WebUtility.HtmlEncode(cpChartFile)}""></iframe>
 
 </body>
 </html>";
