@@ -1,3 +1,7 @@
 ﻿instanceSetName;instanceName;algorithm;status;objVal;compTime
 ClassroomInstanceSet3;ClassroomInstanceSet3_3;Team Tabu Search N3 (90s);FEASIBLE;837;90.00
 ClassroomInstanceSet3;ClassroomInstanceSet3_3;Team Tabu Search N3 (without time limit);FEASIBLE;837;112.32
+ClassroomInstanceSet4;ClassroomInstanceSet4_2;Team Tabu Search N3 (90s);FEASIBLE;870;90.02
+ClassroomInstanceSet9;ClassroomInstanceSet9_3;Team Tabu Search N3 (90s);FEASIBLE;2448;90.01
+ClassroomInstanceSet9;ClassroomInstanceSet9_3;Team Tabu Search N3 (90s);FEASIBLE;2448;90.01
+ClassroomInstanceSet9;ClassroomInstanceSet9_3;Team Tabu Search N3 (90s);FEASIBLE;2448;90.01

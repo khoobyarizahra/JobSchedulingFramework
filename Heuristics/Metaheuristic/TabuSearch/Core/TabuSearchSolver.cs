@@ -45,7 +45,7 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
         private const int VerbosePrintInterval = 1000;
 
         // Restart is triggered after a long phase without improving the global best solution.
-        private const int RestartAfterNoImprovement = 8000;
+        private const int RestartAfterNoImprovementFactor = 25;
 
         // Number of random swaps used to perturb the best known solution during a restart.
         private const int RestartPerturbationMoves = 30;
@@ -73,6 +73,14 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 
             bool useTimeLimit =
                 timeLimitSeconds > 0;
+            int operationCount =
+                instance.Jobs.Sum(job => job.Operations.Count);
+
+            int restartAfterNoImprovement =
+                operationCount * RestartAfterNoImprovementFactor;
+            Console.WriteLine(
+             "Restart threshold: " +
+             restartAfterNoImprovement);
 
             // Build the initial machine orders from the current schedule stored in the instance.
             Dictionary<int, List<Operation>> currentOrders =
@@ -364,7 +372,7 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 // If the global best solution has not improved for a long time,
                 // the current search trajectory is restarted from a perturbed version
                 // of the best known solution.
-                if (iterationsSinceImprovement >= RestartAfterNoImprovement)
+                if (iterationsSinceImprovement >= restartAfterNoImprovement)
                 {
                     restartCount++;
 
