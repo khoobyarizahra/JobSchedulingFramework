@@ -4,24 +4,38 @@ using System.Text;
 namespace JobShopSchedulingFramework.Results
 {
     /// <summary>
-    /// Writes evaluation results to a semicolon-separated CSV file.
+    /// Writes evaluation results to semicolon-separated CSV files.
     ///
-    /// The file is stored in:
-    /// Results/Csv/Scheduling_Results.csv
-    ///
-    /// The required CSV format is:
+    /// Required CSV format:
     /// instanceSetName;instanceName;algorithm;status;objVal;compTime
     /// </summary>
     public static class CsvResultWriter
     {
         /// <summary>
-        /// Writes the given result rows to the CSV file.
+        /// Writes result rows to the default CSV file.
         ///
+        /// This method is useful for interactive experiments.
         /// If the file already exists, the new rows are appended.
-        /// If the file does not exist yet, the header line is written first.
         /// </summary>
         public static string WriteResults(
             List<CsvResultRow> rows)
+        {
+            return WriteResultsToFile(
+                rows,
+                "Scheduling_Results.csv",
+                append: true);
+        }
+
+        /// <summary>
+        /// Writes result rows to a selected CSV file inside Results/Csv.
+        ///
+        /// For final benchmark evaluation, append should be false,
+        /// so the file is recreated on every full run.
+        /// </summary>
+        public static string WriteResultsToFile(
+            List<CsvResultRow> rows,
+            string fileName,
+            bool append)
         {
             string outputFolder =
                 Path.Combine(
@@ -34,15 +48,15 @@ namespace JobShopSchedulingFramework.Results
             string csvPath =
                 Path.Combine(
                     outputFolder,
-                    "Scheduling_Results.csv");
+                    fileName);
 
-            bool fileAlreadyExists =
-                File.Exists(csvPath);
+            bool writeHeader =
+                !append || !File.Exists(csvPath);
 
             List<string> lines =
                 new List<string>();
 
-            if (!fileAlreadyExists)
+            if (writeHeader)
             {
                 lines.Add(
                     "instanceSetName;instanceName;algorithm;status;objVal;compTime");
@@ -54,10 +68,20 @@ namespace JobShopSchedulingFramework.Results
                     CreateCsvLine(row));
             }
 
-            File.AppendAllLines(
-                csvPath,
-                lines,
-                Encoding.UTF8);
+            if (append)
+            {
+                File.AppendAllLines(
+                    csvPath,
+                    lines,
+                    Encoding.UTF8);
+            }
+            else
+            {
+                File.WriteAllLines(
+                    csvPath,
+                    lines,
+                    Encoding.UTF8);
+            }
 
             return Path.GetFullPath(csvPath);
         }
@@ -98,9 +122,6 @@ namespace JobShopSchedulingFramework.Results
 
         /// <summary>
         /// Returns the project root folder.
-        ///
-        /// During execution, relative paths start in bin/Debug/netX.
-        /// This method moves three levels up to the project folder.
         /// </summary>
         private static string GetProjectRootFolder()
         {

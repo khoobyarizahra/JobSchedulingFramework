@@ -1,0 +1,171 @@
+﻿<!DOCTYPE html>
+        <html>
+        <head>
+        <meta charset="utf-8">
+
+        <style>
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12px;
+        }
+
+        #schedule {
+            height: 500px;
+        }
+        </style>
+
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+        <script type="text/javascript">
+
+        google.charts.load('current', { packages:['timeline'] });
+        google.charts.setOnLoadCallback(drawChart);
+
+        function drawChart()
+        {
+            var container =
+                document.getElementById('schedule');
+
+            var chart =
+                new google.visualization.Timeline(container);
+
+            var dataTable =
+                new google.visualization.DataTable();
+
+            dataTable.addColumn({ type: 'string', id: 'Machine' });
+            dataTable.addColumn({ type: 'string', id: 'Operation' });
+            dataTable.addColumn({ type: 'date', id: 'Start' });
+            dataTable.addColumn({ type: 'date', id: 'End' });
+
+            dataTable.addRows([
+                ["Machine 1", "J3-O1", new Date(0,0,0,0,0,0,0), new Date(0,0,0,0,88,0,0)],
+        ["Machine 1", "setup0", new Date(0,0,0,0,88,0,0), new Date(0,0,0,0,99,0,0)],
+        ["Machine 1", "J9-O2", new Date(0,0,0,0,99,0,0), new Date(0,0,0,0,110,0,0)],
+        ["Machine 1", "setup1", new Date(0,0,0,0,110,0,0), new Date(0,0,0,0,159,0,0)],
+        ["Machine 1", "J6-O1", new Date(0,0,0,0,159,0,0), new Date(0,0,0,0,169,0,0)],
+        ["Machine 1", "setup2", new Date(0,0,0,0,169,0,0), new Date(0,0,0,0,184,0,0)],
+        ["Machine 1", "J10-O1", new Date(0,0,0,0,184,0,0), new Date(0,0,0,0,260,0,0)],
+        ["Machine 1", "setup3", new Date(0,0,0,0,260,0,0), new Date(0,0,0,0,286,0,0)],
+        ["Machine 1", "J2-O1", new Date(0,0,0,0,286,0,0), new Date(0,0,0,0,344,0,0)],
+        ["Machine 1", "setup4", new Date(0,0,0,0,344,0,0), new Date(0,0,0,0,358,0,0)],
+        ["Machine 1", "J1-O3", new Date(0,0,0,0,358,0,0), new Date(0,0,0,0,414,0,0)],
+        ["Machine 1", "setup5", new Date(0,0,0,0,414,0,0), new Date(0,0,0,0,428,0,0)],
+        ["Machine 1", "J8-O3", new Date(0,0,0,0,428,0,0), new Date(0,0,0,0,440,0,0)],
+        ["Machine 1", "setup6", new Date(0,0,0,0,445,0,0), new Date(0,0,0,0,485,0,0)],
+        ["Machine 1", "J7-O5", new Date(0,0,0,0,485,0,0), new Date(0,0,0,0,545,0,0)],
+        ["Machine 2", "J1-O2", new Date(0,0,0,0,34,0,0), new Date(0,0,0,0,92,0,0)],
+        ["Machine 2", "setup7", new Date(0,0,0,0,145,0,0), new Date(0,0,0,0,161,0,0)],
+        ["Machine 2", "J3-O3", new Date(0,0,0,0,161,0,0), new Date(0,0,0,0,253,0,0)],
+        ["Machine 2", "setup8", new Date(0,0,0,0,281,0,0), new Date(0,0,0,0,291,0,0)],
+        ["Machine 2", "J6-O3", new Date(0,0,0,0,291,0,0), new Date(0,0,0,0,308,0,0)],
+        ["Machine 2", "setup9", new Date(0,0,0,0,308,0,0), new Date(0,0,0,0,357,0,0)],
+        ["Machine 2", "J7-O3", new Date(0,0,0,0,357,0,0), new Date(0,0,0,0,385,0,0)],
+        ["Machine 2", "setup10", new Date(0,0,0,0,385,0,0), new Date(0,0,0,0,412,0,0)],
+        ["Machine 2", "J4-O2", new Date(0,0,0,0,412,0,0), new Date(0,0,0,0,447,0,0)],
+        ["Machine 2", "setup11", new Date(0,0,0,0,447,0,0), new Date(0,0,0,0,464,0,0)],
+        ["Machine 2", "J5-O3", new Date(0,0,0,0,464,0,0), new Date(0,0,0,0,553,0,0)],
+        ["Machine 2", "setup12", new Date(0,0,0,0,553,0,0), new Date(0,0,0,0,572,0,0)],
+        ["Machine 2", "J8-O5", new Date(0,0,0,0,572,0,0), new Date(0,0,0,0,624,0,0)],
+        ["Machine 3", "J7-O1", new Date(0,0,0,0,0,0,0), new Date(0,0,0,0,45,0,0)],
+        ["Machine 3", "setup13", new Date(0,0,0,0,70,0,0), new Date(0,0,0,0,88,0,0)],
+        ["Machine 3", "J3-O2", new Date(0,0,0,0,88,0,0), new Date(0,0,0,0,161,0,0)],
+        ["Machine 3", "setup14", new Date(0,0,0,0,254,0,0), new Date(0,0,0,0,264,0,0)],
+        ["Machine 3", "J6-O2", new Date(0,0,0,0,264,0,0), new Date(0,0,0,0,291,0,0)],
+        ["Machine 3", "setup15", new Date(0,0,0,0,291,0,0), new Date(0,0,0,0,306,0,0)],
+        ["Machine 3", "J10-O2", new Date(0,0,0,0,306,0,0), new Date(0,0,0,0,343,0,0)],
+        ["Machine 3", "setup16", new Date(0,0,0,0,343,0,0), new Date(0,0,0,0,357,0,0)],
+        ["Machine 3", "J8-O2", new Date(0,0,0,0,357,0,0), new Date(0,0,0,0,424,0,0)],
+        ["Machine 3", "setup17", new Date(0,0,0,0,424,0,0), new Date(0,0,0,0,435,0,0)],
+        ["Machine 3", "J2-O2", new Date(0,0,0,0,435,0,0), new Date(0,0,0,0,485,0,0)],
+        ["Machine 3", "setup18", new Date(0,0,0,0,485,0,0), new Date(0,0,0,0,506,0,0)],
+        ["Machine 3", "J9-O4", new Date(0,0,0,0,506,0,0), new Date(0,0,0,0,554,0,0)],
+        ["Machine 4", "J1-O1", new Date(0,0,0,0,0,0,0), new Date(0,0,0,0,34,0,0)],
+        ["Machine 4", "setup19", new Date(0,0,0,0,34,0,0), new Date(0,0,0,0,48,0,0)],
+        ["Machine 4", "J8-O1", new Date(0,0,0,0,48,0,0), new Date(0,0,0,0,92,0,0)],
+        ["Machine 4", "setup20", new Date(0,0,0,0,92,0,0), new Date(0,0,0,0,120,0,0)],
+        ["Machine 4", "J9-O3", new Date(0,0,0,0,120,0,0), new Date(0,0,0,0,196,0,0)],
+        ["Machine 4", "setup21", new Date(0,0,0,0,196,0,0), new Date(0,0,0,0,217,0,0)],
+        ["Machine 4", "J5-O2", new Date(0,0,0,0,217,0,0), new Date(0,0,0,0,285,0,0)],
+        ["Machine 4", "setup22", new Date(0,0,0,0,285,0,0), new Date(0,0,0,0,295,0,0)],
+        ["Machine 4", "J4-O1", new Date(0,0,0,0,295,0,0), new Date(0,0,0,0,382,0,0)],
+        ["Machine 4", "setup23", new Date(0,0,0,0,382,0,0), new Date(0,0,0,0,401,0,0)],
+        ["Machine 4", "J7-O4", new Date(0,0,0,0,401,0,0), new Date(0,0,0,0,414,0,0)],
+        ["Machine 4", "setup24", new Date(0,0,0,0,414,0,0), new Date(0,0,0,0,424,0,0)],
+        ["Machine 4", "J6-O5", new Date(0,0,0,0,424,0,0), new Date(0,0,0,0,455,0,0)],
+        ["Machine 4", "setup25", new Date(0,0,0,0,455,0,0), new Date(0,0,0,0,470,0,0)],
+        ["Machine 4", "J3-O5", new Date(0,0,0,0,470,0,0), new Date(0,0,0,0,522,0,0)],
+        ["Machine 4", "setup26", new Date(0,0,0,0,522,0,0), new Date(0,0,0,0,538,0,0)],
+        ["Machine 4", "J10-O4", new Date(0,0,0,0,538,0,0), new Date(0,0,0,0,567,0,0)],
+        ["Machine 4", "setup27", new Date(0,0,0,0,567,0,0), new Date(0,0,0,0,593,0,0)],
+        ["Machine 4", "J2-O4", new Date(0,0,0,0,593,0,0), new Date(0,0,0,0,627,0,0)],
+        ["Machine 5", "J5-O1", new Date(0,0,0,0,0,0,0), new Date(0,0,0,0,16,0,0)],
+        ["Machine 5", "setup28", new Date(0,0,0,0,16,0,0), new Date(0,0,0,0,51,0,0)],
+        ["Machine 5", "J9-O1", new Date(0,0,0,0,51,0,0), new Date(0,0,0,0,65,0,0)],
+        ["Machine 5", "setup29", new Date(0,0,0,0,65,0,0), new Date(0,0,0,0,100,0,0)],
+        ["Machine 5", "J7-O2", new Date(0,0,0,0,100,0,0), new Date(0,0,0,0,179,0,0)],
+        ["Machine 5", "setup30", new Date(0,0,0,0,235,0,0), new Date(0,0,0,0,253,0,0)],
+        ["Machine 5", "J3-O4", new Date(0,0,0,0,253,0,0), new Date(0,0,0,0,341,0,0)],
+        ["Machine 5", "setup31", new Date(0,0,0,0,341,0,0), new Date(0,0,0,0,351,0,0)],
+        ["Machine 5", "J6-O4", new Date(0,0,0,0,351,0,0), new Date(0,0,0,0,365,0,0)],
+        ["Machine 5", "setup32", new Date(0,0,0,0,365,0,0), new Date(0,0,0,0,380,0,0)],
+        ["Machine 5", "J10-O3", new Date(0,0,0,0,380,0,0), new Date(0,0,0,0,465,0,0)],
+        ["Machine 5", "setup33", new Date(0,0,0,0,465,0,0), new Date(0,0,0,0,479,0,0)],
+        ["Machine 5", "J8-O4", new Date(0,0,0,0,479,0,0), new Date(0,0,0,0,514,0,0)],
+        ["Machine 5", "setup34", new Date(0,0,0,0,514,0,0), new Date(0,0,0,0,525,0,0)],
+        ["Machine 5", "J2-O3", new Date(0,0,0,0,525,0,0), new Date(0,0,0,0,577,0,0)],
+        ["Machine 5", "setup35", new Date(0,0,0,0,577,0,0), new Date(0,0,0,0,591,0,0)],
+        ["Machine 5", "J4-O3", new Date(0,0,0,0,591,0,0), new Date(0,0,0,0,625,0,0)]
+            ]);
+
+            var options =
+            {
+                colors: ['#d1cbe7', '#747474', '#7860b7', '#747474', '#4dec60', '#747474', '#04b08c', '#747474', '#282b3a', '#747474', '#98eb63', '#747474', '#15e094', '#747474', '#c5c57b', '#98eb63', '#747474', '#d1cbe7', '#747474', '#4dec60', '#747474', '#c5c57b', '#747474', '#82420b', '#747474', '#e61aec', '#747474', '#15e094', '#c5c57b', '#747474', '#d1cbe7', '#747474', '#4dec60', '#747474', '#04b08c', '#747474', '#15e094', '#747474', '#282b3a', '#747474', '#7860b7', '#98eb63', '#747474', '#15e094', '#747474', '#7860b7', '#747474', '#e61aec', '#747474', '#82420b', '#747474', '#c5c57b', '#747474', '#4dec60', '#747474', '#d1cbe7', '#747474', '#04b08c', '#747474', '#282b3a', '#e61aec', '#747474', '#7860b7', '#747474', '#c5c57b', '#747474', '#d1cbe7', '#747474', '#4dec60', '#747474', '#04b08c', '#747474', '#15e094', '#747474', '#282b3a', '#747474', '#82420b'],
+
+                hAxis:
+                {
+                    minValue: new Date(0,0,0,0,0,0,0),
+                    maxValue: new Date(0,0,0,0,627,0,0)
+                },
+
+                timeline:
+                {
+                    rowLabelStyle:
+                    {
+                        fontName: 'Helvetica',
+                        fontSize: 12
+                    },
+
+                    barLabelStyle:
+                    {
+                        fontName: 'Helvetica',
+                        fontSize: 12
+                    }
+                }
+            };
+
+            chart.draw(dataTable, options);
+        }
+
+        </script>
+        </head>
+
+        <body>
+
+        <div style='margin-top:10px; margin-bottom:20px;'>
+
+        Instance with n=10, m=5<br>
+
+        Objective function: Makespan<br>
+
+        Algorithm: CP Solver<br>
+
+        Objective value: 627<br>
+
+        Status: OPTIMAL / BEST FOUND
+
+        </div>
+
+        <div id='schedule'></div>
+
+        </body>
+        </html>

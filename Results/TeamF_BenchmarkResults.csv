@@ -1,0 +1,121 @@
+instanceSetName;instanceName;algorithm;status;objVal;compTime
+ClassroomInstanceSet1;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet1;1;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet1;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet1;2;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet1;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet1;3;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet2;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet2;1;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet2;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet2;2;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet2;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet2;3;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet3;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet3;1;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet3;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet3;2;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet3;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet3;3;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet4;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet4;1;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet4;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet4;2;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet4;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet4;3;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet5;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet5;1;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet5;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet5;2;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet5;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet5;3;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet6;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet6;1;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet6;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet6;2;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet6;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet6;3;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet7;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet7;1;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet7;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet7;2;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet7;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet7;3;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet8;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet8;1;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet8;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet8;2;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet8;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet8;3;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet9;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet9;1;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet9;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet9;2;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet9;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet9;3;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet10;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet10;1;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet10;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet10;2;Team F Tabu Search (90s);Feasible;0;0.00
+ClassroomInstanceSet10;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+ClassroomInstanceSet10;3;Team F Tabu Search (90s);Feasible;0;0.00
+TeamA;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamA;1;Team F Tabu Search (90s);Feasible;0;0.00
+TeamA;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamA;2;Team F Tabu Search (90s);Feasible;0;0.00
+TeamA;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamA;3;Team F Tabu Search (90s);Feasible;0;0.00
+TeamA;4;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamA;4;Team F Tabu Search (90s);Feasible;0;0.00
+TeamA;5;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamA;5;Team F Tabu Search (90s);Feasible;0;0.00
+TeamB;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamB;1;Team F Tabu Search (90s);Feasible;0;0.00
+TeamB;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamB;2;Team F Tabu Search (90s);Feasible;0;0.00
+TeamB;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamB;3;Team F Tabu Search (90s);Feasible;0;0.00
+TeamB;4;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamB;4;Team F Tabu Search (90s);Feasible;0;0.00
+TeamB;5;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamB;5;Team F Tabu Search (90s);Feasible;0;0.00
+TeamC;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamC;1;Team F Tabu Search (90s);Feasible;0;0.00
+TeamC;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamC;2;Team F Tabu Search (90s);Feasible;0;0.00
+TeamC;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamC;3;Team F Tabu Search (90s);Feasible;0;0.00
+TeamC;4;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamC;4;Team F Tabu Search (90s);Feasible;0;0.00
+TeamC;5;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamC;5;Team F Tabu Search (90s);Feasible;0;0.00
+TeamD;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamD;1;Team F Tabu Search (90s);Feasible;0;0.00
+TeamD;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamD;2;Team F Tabu Search (90s);Feasible;0;0.00
+TeamD;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamD;3;Team F Tabu Search (90s);Feasible;0;0.00
+TeamD;4;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamD;4;Team F Tabu Search (90s);Feasible;0;0.00
+TeamD;5;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamD;5;Team F Tabu Search (90s);Feasible;0;0.00
+TeamE;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamE;1;Team F Tabu Search (90s);Feasible;0;0.00
+TeamE;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamE;2;Team F Tabu Search (90s);Feasible;0;0.00
+TeamE;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamE;3;Team F Tabu Search (90s);Feasible;0;0.00
+TeamE;4;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamE;4;Team F Tabu Search (90s);Feasible;0;0.00
+TeamE;5;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamE;5;Team F Tabu Search (90s);Feasible;0;0.00
+TeamF;1;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamF;1;Team F Tabu Search (90s);Feasible;0;0.00
+TeamF;2;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamF;2;Team F Tabu Search (90s);Feasible;0;0.00
+TeamF;3;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamF;3;Team F Tabu Search (90s);Feasible;0;0.00
+TeamF;4;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamF;4;Team F Tabu Search (90s);Feasible;0;0.00
+TeamF;5;Team F Tabu Search (Ohne Zeitlimit);Feasible;0;0.00
+TeamF;5;Team F Tabu Search (90s);Feasible;0;0.00

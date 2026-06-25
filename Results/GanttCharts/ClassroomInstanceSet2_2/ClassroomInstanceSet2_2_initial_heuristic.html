@@ -1,0 +1,133 @@
+﻿<!DOCTYPE html>
+        <html>
+        <head>
+        <meta charset="utf-8">
+
+        <style>
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12px;
+        }
+
+        #schedule {
+            height: 500px;
+        }
+        </style>
+
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+        <script type="text/javascript">
+
+        google.charts.load('current', { packages:['timeline'] });
+        google.charts.setOnLoadCallback(drawChart);
+
+        function drawChart()
+        {
+            var container =
+                document.getElementById('schedule');
+
+            var chart =
+                new google.visualization.Timeline(container);
+
+            var dataTable =
+                new google.visualization.DataTable();
+
+            dataTable.addColumn({ type: 'string', id: 'Machine' });
+            dataTable.addColumn({ type: 'string', id: 'Operation' });
+            dataTable.addColumn({ type: 'date', id: 'Start' });
+            dataTable.addColumn({ type: 'date', id: 'End' });
+
+            dataTable.addRows([
+                ["Machine 1", "J7-O1", new Date(0,0,0,0,0,0,0), new Date(0,0,0,0,72,0,0)],
+        ["Machine 1", "setup0", new Date(0,0,0,0,183,0,0), new Date(0,0,0,0,220,0,0)],
+        ["Machine 1", "J6-O2", new Date(0,0,0,0,220,0,0), new Date(0,0,0,0,298,0,0)],
+        ["Machine 1", "setup1", new Date(0,0,0,0,298,0,0), new Date(0,0,0,0,337,0,0)],
+        ["Machine 1", "J2-O2", new Date(0,0,0,0,337,0,0), new Date(0,0,0,0,408,0,0)],
+        ["Machine 1", "setup2", new Date(0,0,0,0,408,0,0), new Date(0,0,0,0,435,0,0)],
+        ["Machine 1", "J4-O3", new Date(0,0,0,0,435,0,0), new Date(0,0,0,0,522,0,0)],
+        ["Machine 1", "setup3", new Date(0,0,0,0,522,0,0), new Date(0,0,0,0,537,0,0)],
+        ["Machine 1", "J3-O2", new Date(0,0,0,0,537,0,0), new Date(0,0,0,0,562,0,0)],
+        ["Machine 1", "setup4", new Date(0,0,0,0,562,0,0), new Date(0,0,0,0,593,0,0)],
+        ["Machine 1", "J1-O2", new Date(0,0,0,0,593,0,0), new Date(0,0,0,0,623,0,0)],
+        ["Machine 1", "setup5", new Date(0,0,0,0,623,0,0), new Date(0,0,0,0,633,0,0)],
+        ["Machine 1", "J5-O3", new Date(0,0,0,0,633,0,0), new Date(0,0,0,0,673,0,0)],
+        ["Machine 2", "J4-O1", new Date(0,0,0,0,0,0,0), new Date(0,0,0,0,90,0,0)],
+        ["Machine 2", "setup6", new Date(0,0,0,0,90,0,0), new Date(0,0,0,0,138,0,0)],
+        ["Machine 2", "J6-O1", new Date(0,0,0,0,138,0,0), new Date(0,0,0,0,220,0,0)],
+        ["Machine 2", "setup7", new Date(0,0,0,0,220,0,0), new Date(0,0,0,0,259,0,0)],
+        ["Machine 2", "J2-O1", new Date(0,0,0,0,259,0,0), new Date(0,0,0,0,297,0,0)],
+        ["Machine 2", "setup8", new Date(0,0,0,0,297,0,0), new Date(0,0,0,0,309,0,0)],
+        ["Machine 2", "J3-O1", new Date(0,0,0,0,309,0,0), new Date(0,0,0,0,383,0,0)],
+        ["Machine 2", "setup9", new Date(0,0,0,0,383,0,0), new Date(0,0,0,0,429,0,0)],
+        ["Machine 2", "J5-O2", new Date(0,0,0,0,429,0,0), new Date(0,0,0,0,518,0,0)],
+        ["Machine 2", "setup10", new Date(0,0,0,0,518,0,0), new Date(0,0,0,0,557,0,0)],
+        ["Machine 2", "J7-O3", new Date(0,0,0,0,557,0,0), new Date(0,0,0,0,625,0,0)],
+        ["Machine 2", "setup11", new Date(0,0,0,0,625,0,0), new Date(0,0,0,0,659,0,0)],
+        ["Machine 2", "J1-O3", new Date(0,0,0,0,659,0,0), new Date(0,0,0,0,677,0,0)],
+        ["Machine 3", "J5-O1", new Date(0,0,0,0,0,0,0), new Date(0,0,0,0,58,0,0)],
+        ["Machine 3", "setup12", new Date(0,0,0,0,67,0,0), new Date(0,0,0,0,90,0,0)],
+        ["Machine 3", "J4-O2", new Date(0,0,0,0,90,0,0), new Date(0,0,0,0,176,0,0)],
+        ["Machine 3", "setup13", new Date(0,0,0,0,176,0,0), new Date(0,0,0,0,211,0,0)],
+        ["Machine 3", "J7-O2", new Date(0,0,0,0,211,0,0), new Date(0,0,0,0,225,0,0)],
+        ["Machine 3", "setup14", new Date(0,0,0,0,225,0,0), new Date(0,0,0,0,259,0,0)],
+        ["Machine 3", "J1-O1", new Date(0,0,0,0,259,0,0), new Date(0,0,0,0,290,0,0)],
+        ["Machine 3", "setup15", new Date(0,0,0,0,290,0,0), new Date(0,0,0,0,325,0,0)],
+        ["Machine 3", "J6-O3", new Date(0,0,0,0,325,0,0), new Date(0,0,0,0,355,0,0)],
+        ["Machine 3", "setup16", new Date(0,0,0,0,369,0,0), new Date(0,0,0,0,408,0,0)],
+        ["Machine 3", "J2-O3", new Date(0,0,0,0,408,0,0), new Date(0,0,0,0,481,0,0)],
+        ["Machine 3", "setup17", new Date(0,0,0,0,550,0,0), new Date(0,0,0,0,562,0,0)],
+        ["Machine 3", "J3-O3", new Date(0,0,0,0,562,0,0), new Date(0,0,0,0,605,0,0)]
+            ]);
+
+            var options =
+            {
+                colors: ['#c5c57b', '#747474', '#4dec60', '#747474', '#282b3a', '#747474', '#82420b', '#747474', '#d1cbe7', '#747474', '#98eb63', '#747474', '#e61aec', '#82420b', '#747474', '#4dec60', '#747474', '#282b3a', '#747474', '#d1cbe7', '#747474', '#e61aec', '#747474', '#c5c57b', '#747474', '#98eb63', '#e61aec', '#747474', '#82420b', '#747474', '#c5c57b', '#747474', '#98eb63', '#747474', '#4dec60', '#747474', '#282b3a', '#747474', '#d1cbe7'],
+
+                hAxis:
+                {
+                    minValue: new Date(0,0,0,0,0,0,0),
+                    maxValue: new Date(0,0,0,0,677,0,0)
+                },
+
+                timeline:
+                {
+                    rowLabelStyle:
+                    {
+                        fontName: 'Helvetica',
+                        fontSize: 12
+                    },
+
+                    barLabelStyle:
+                    {
+                        fontName: 'Helvetica',
+                        fontSize: 12
+                    }
+                }
+            };
+
+            chart.draw(dataTable, options);
+        }
+
+        </script>
+        </head>
+
+        <body>
+
+        <div style='margin-top:10px; margin-bottom:20px;'>
+
+        Instance with n=7, m=3<br>
+
+        Objective function: Makespan<br>
+
+        Algorithm: Initial Heuristic - LRPT<br>
+
+        Objective value: 677<br>
+
+        Status: FEASIBLE
+
+        </div>
+
+        <div id='schedule'></div>
+
+        </body>
+        </html>

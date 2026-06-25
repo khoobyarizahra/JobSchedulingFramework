@@ -1,0 +1,115 @@
+﻿<!DOCTYPE html>
+        <html>
+        <head>
+        <meta charset="utf-8">
+
+        <style>
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12px;
+        }
+
+        #schedule {
+            height: 500px;
+        }
+        </style>
+
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+        <script type="text/javascript">
+
+        google.charts.load('current', { packages:['timeline'] });
+        google.charts.setOnLoadCallback(drawChart);
+
+        function drawChart()
+        {
+            var container =
+                document.getElementById('schedule');
+
+            var chart =
+                new google.visualization.Timeline(container);
+
+            var dataTable =
+                new google.visualization.DataTable();
+
+            dataTable.addColumn({ type: 'string', id: 'Machine' });
+            dataTable.addColumn({ type: 'string', id: 'Operation' });
+            dataTable.addColumn({ type: 'date', id: 'Start' });
+            dataTable.addColumn({ type: 'date', id: 'End' });
+
+            dataTable.addRows([
+                ["Machine 1", "J3-O3", new Date(0,0,0,0,259,0,0), new Date(0,0,0,0,339,0,0)],
+        ["Machine 1", "setup0", new Date(0,0,0,0,341,0,0), new Date(0,0,0,0,369,0,0)],
+        ["Machine 1", "J2-O3", new Date(0,0,0,0,369,0,0), new Date(0,0,0,0,456,0,0)],
+        ["Machine 2", "J5-O1", new Date(0,0,0,0,0,0,0), new Date(0,0,0,0,46,0,0)],
+        ["Machine 2", "setup1", new Date(0,0,0,0,46,0,0), new Date(0,0,0,0,63,0,0)],
+        ["Machine 2", "J4-O2", new Date(0,0,0,0,63,0,0), new Date(0,0,0,0,162,0,0)],
+        ["Machine 2", "setup2", new Date(0,0,0,0,162,0,0), new Date(0,0,0,0,176,0,0)],
+        ["Machine 2", "J3-O1", new Date(0,0,0,0,176,0,0), new Date(0,0,0,0,248,0,0)],
+        ["Machine 2", "setup3", new Date(0,0,0,0,248,0,0), new Date(0,0,0,0,276,0,0)],
+        ["Machine 2", "J2-O2", new Date(0,0,0,0,276,0,0), new Date(0,0,0,0,369,0,0)],
+        ["Machine 2", "setup4", new Date(0,0,0,0,369,0,0), new Date(0,0,0,0,393,0,0)],
+        ["Machine 2", "J1-O2", new Date(0,0,0,0,393,0,0), new Date(0,0,0,0,461,0,0)],
+        ["Machine 3", "J4-O1", new Date(0,0,0,0,0,0,0), new Date(0,0,0,0,18,0,0)],
+        ["Machine 3", "setup5", new Date(0,0,0,0,18,0,0), new Date(0,0,0,0,28,0,0)],
+        ["Machine 3", "J2-O1", new Date(0,0,0,0,28,0,0), new Date(0,0,0,0,113,0,0)],
+        ["Machine 3", "setup6", new Date(0,0,0,0,216,0,0), new Date(0,0,0,0,248,0,0)],
+        ["Machine 3", "J3-O2", new Date(0,0,0,0,248,0,0), new Date(0,0,0,0,259,0,0)],
+        ["Machine 3", "setup7", new Date(0,0,0,0,259,0,0), new Date(0,0,0,0,280,0,0)],
+        ["Machine 3", "J1-O1", new Date(0,0,0,0,280,0,0), new Date(0,0,0,0,380,0,0)],
+        ["Machine 3", "setup8", new Date(0,0,0,0,380,0,0), new Date(0,0,0,0,395,0,0)],
+        ["Machine 3", "J5-O2", new Date(0,0,0,0,395,0,0), new Date(0,0,0,0,423,0,0)]
+            ]);
+
+            var options =
+            {
+                colors: ['#d1cbe7', '#747474', '#282b3a', '#e61aec', '#747474', '#82420b', '#747474', '#d1cbe7', '#747474', '#282b3a', '#747474', '#98eb63', '#82420b', '#747474', '#282b3a', '#747474', '#d1cbe7', '#747474', '#98eb63', '#747474', '#e61aec'],
+
+                hAxis:
+                {
+                    minValue: new Date(0,0,0,0,0,0,0),
+                    maxValue: new Date(0,0,0,0,461,0,0)
+                },
+
+                timeline:
+                {
+                    rowLabelStyle:
+                    {
+                        fontName: 'Helvetica',
+                        fontSize: 12
+                    },
+
+                    barLabelStyle:
+                    {
+                        fontName: 'Helvetica',
+                        fontSize: 12
+                    }
+                }
+            };
+
+            chart.draw(dataTable, options);
+        }
+
+        </script>
+        </head>
+
+        <body>
+
+        <div style='margin-top:10px; margin-bottom:20px;'>
+
+        Instance with n=5, m=3<br>
+
+        Objective function: Makespan<br>
+
+        Algorithm: Tabu Search - N3 - All Pair Critical Block Swaps - 90s<br>
+
+        Objective value: 461<br>
+
+        Status: FEASIBLE
+
+        </div>
+
+        <div id='schedule'></div>
+
+        </body>
+        </html>

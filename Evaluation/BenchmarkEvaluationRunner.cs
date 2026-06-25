@@ -1,0 +1,327 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core;
+using JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighborhoods;
+using JobShopSchedulingFramework.Models;
+using JobShopSchedulingFramework.Results;
+
+namespace JobShopSchedulingFramework.Evaluation
+{
+    public static class BenchmarkEvaluationRunner
+    {
+        private const string AlgorithmWithoutTimeLimit =
+            "Team F Tabu Search (Ohne Zeitlimit)";
+
+        private const string AlgorithmWith90Seconds =
+            "Team F Tabu Search (90s)";
+
+        private const int TimeLimit90Seconds = 90;
+        private const int MaxIterationsForTimeLimitedRun = 1_000_000;
+
+        public static void Run()
+        {
+            Console.WriteLine();
+            Console.WriteLine("=======================================");
+            Console.WriteLine(" FULL BENCHMARK EVALUATION");
+            Console.WriteLine(" Team F Tabu Search");
+            Console.WriteLine("=======================================");
+            Console.WriteLine();
+
+            string benchmarkFolder =
+                Path.Combine(
+                    GetProjectRootFolder(),
+                    "Instances",
+                    "Benchmark");
+
+            if (!Directory.Exists(benchmarkFolder))
+            {
+                Console.WriteLine("Benchmark folder not found:");
+                Console.WriteLine(benchmarkFolder);
+                return;
+            }
+
+            List<string> instanceFiles =
+                Directory.GetFiles(
+                        benchmarkFolder,
+                        "*.txt",
+                        SearchOption.TopDirectoryOnly)
+                    .OrderBy(file => GetSortingKey(Path.GetFileNameWithoutExtension(file)))
+                    .ToList();
+
+            Console.WriteLine("Found benchmark instances: " + instanceFiles.Count);
+            Console.WriteLine();
+
+            List<CsvResultRow> resultRows =
+                new List<CsvResultRow>();
+
+            int processedInstances =
+                0;
+
+            foreach (string file in instanceFiles)
+            {
+                processedInstances++;
+
+                string fileNameWithoutExtension =
+                    Path.GetFileNameWithoutExtension(file);
+
+                (string instanceSetName, string instanceName) =
+                    ExtractInstanceInfo(fileNameWithoutExtension);
+
+                Console.WriteLine();
+                Console.WriteLine("=======================================");
+                Console.WriteLine(
+                    "Instance " +
+                    processedInstances +
+                    " / " +
+                    instanceFiles.Count);
+                Console.WriteLine(Path.GetFileName(file));
+                Console.WriteLine("=======================================");
+                Console.WriteLine();
+
+                InitialHeuristicResult initialResult =
+                    HeuristicExperiment.Run(file);
+
+                CsvResultRow extendedRow =
+                    RunSingleTabuForCsv(
+                        initialResult,
+                        instanceSetName,
+                        instanceName,
+                        AlgorithmWithoutTimeLimit,
+                        maxIterations: CalculateExtendedMaxIterations(initialResult.bestInstance),
+                        timeLimitSeconds: 0);
+
+                resultRows.Add(extendedRow);
+
+                CsvResultRow timeLimitedRow =
+                    RunSingleTabuForCsv(
+                        initialResult,
+                        instanceSetName,
+                        instanceName,
+                        AlgorithmWith90Seconds,
+                        maxIterations: MaxIterationsForTimeLimitedRun,
+                        timeLimitSeconds: TimeLimit90Seconds);
+
+                resultRows.Add(timeLimitedRow);
+
+                string temporaryOutputFile =
+                    CsvResultWriter.WriteResultsToFile(
+                        resultRows,
+                        "TeamF_BenchmarkResults.csv",
+                        append: false);
+
+                Console.WriteLine();
+                Console.WriteLine("Progress saved:");
+                Console.WriteLine(temporaryOutputFile);
+                Console.WriteLine("Rows written so far: " + resultRows.Count);
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("Full benchmark evaluation finished.");
+            Console.WriteLine("Total rows written: " + resultRows.Count);
+        }
+
+        private static CsvResultRow RunSingleTabuForCsv(
+            InitialHeuristicResult initialResult,
+            string instanceSetName,
+            string instanceName,
+            string algorithmName,
+            int maxIterations,
+            int timeLimitSeconds)
+        {
+            Console.WriteLine();
+            Console.WriteLine("Running: " + algorithmName);
+            Console.WriteLine("Max iterations: " + maxIterations);
+            Console.WriteLine("Time limit seconds: " + timeLimitSeconds);
+            Console.WriteLine();
+
+            Instance instanceCopy =
+                CloneInstance(initialResult.bestInstance);
+
+            Stopwatch stopwatch =
+                Stopwatch.StartNew();
+
+            TabuSearchSolver tabuSearch =
+                new TabuSearchSolver(
+                    maxIterations: maxIterations,
+                    timeLimitSeconds: timeLimitSeconds,
+                    neighborhoodDefinition: new AllPairSwapNeighborhood());
+
+            int tabuCmax =
+                tabuSearch.Run(instanceCopy);
+
+            stopwatch.Stop();
+
+            return new CsvResultRow
+            {
+                InstanceSetName = instanceSetName,
+                InstanceName = instanceName,
+                Algorithm = algorithmName,
+                Status = "Feasible",
+                ObjectiveValue = tabuCmax,
+                ComputationTimeSeconds = stopwatch.Elapsed.TotalSeconds
+            };
+        }
+
+        private static int CalculateExtendedMaxIterations(
+            Instance instance)
+        {
+            int operationCount =
+                instance.Jobs.Sum(job => job.Operations.Count);
+
+            if (operationCount <= 60)
+            {
+                return 200_000;
+            }
+
+            if (operationCount <= 120)
+            {
+                return 120_000;
+            }
+
+            if (operationCount <= 200)
+            {
+                return 80_000;
+            }
+
+            if (operationCount <= 350)
+            {
+                return 50_000;
+            }
+
+            return 30_000;
+        }
+
+        private static string GetProjectRootFolder()
+        {
+            return Path.GetFullPath(
+                Path.Combine(
+                    AppContext.BaseDirectory,
+                    @"..\..\.."));
+        }
+
+        private static (string InstanceSetName, string InstanceName) ExtractInstanceInfo(
+            string fileNameWithoutExtension)
+        {
+            int lastUnderscoreIndex =
+                fileNameWithoutExtension.LastIndexOf('_');
+
+            if (lastUnderscoreIndex < 0)
+            {
+                return (fileNameWithoutExtension, "1");
+            }
+
+            string instanceSetName =
+                fileNameWithoutExtension.Substring(0, lastUnderscoreIndex);
+
+            string instanceName =
+                fileNameWithoutExtension.Substring(lastUnderscoreIndex + 1);
+
+            if (instanceSetName == "Team F")
+            {
+                instanceSetName = "TeamF";
+            }
+
+            if (instanceName.StartsWith("Instance"))
+            {
+                instanceName =
+                    instanceName.Replace("Instance", "");
+            }
+
+            return (instanceSetName, instanceName);
+        }
+
+        private static string GetSortingKey(string fileName)
+        {
+            if (fileName.StartsWith("ClassroomInstanceSet"))
+            {
+                string remaining =
+                    fileName.Replace("ClassroomInstanceSet", "");
+
+                string[] parts =
+                    remaining.Split('_');
+
+                if (parts.Length == 2 &&
+                    int.TryParse(parts[0], out int setNumber) &&
+                    int.TryParse(parts[1], out int instanceNumber))
+                {
+                    return $"A_{setNumber:D3}_{instanceNumber:D3}";
+                }
+            }
+
+            if (fileName.StartsWith("Team"))
+            {
+                return $"B_{fileName}";
+            }
+
+            return $"Z_{fileName}";
+        }
+
+        private static Instance CloneInstance(
+            Instance original)
+        {
+            Instance clone =
+                new Instance();
+
+            clone.NumJobs =
+                original.NumJobs;
+
+            clone.NumMachines =
+                original.NumMachines;
+
+            foreach (Job originalJob in original.Jobs)
+            {
+                Job clonedJob =
+                    new Job(originalJob.JobID);
+
+                foreach (Operation originalOperation in originalJob.Operations)
+                {
+                    Operation clonedOperation =
+                        new Operation(
+                            originalOperation.JobID,
+                            originalOperation.OperationID,
+                            originalOperation.Machine,
+                            originalOperation.ProcessingTime);
+
+                    clonedOperation.StartTime =
+                        originalOperation.StartTime;
+
+                    clonedOperation.EndTime =
+                        originalOperation.EndTime;
+
+                    clonedOperation.remainingProcessingTime =
+                        originalOperation.remainingProcessingTime;
+
+                    clonedJob.Operations.Add(clonedOperation);
+                }
+
+                clone.Jobs.Add(clonedJob);
+            }
+
+            if (original.SetupTimes != null)
+            {
+                int rows =
+                    original.SetupTimes.GetLength(0);
+
+                int columns =
+                    original.SetupTimes.GetLength(1);
+
+                clone.SetupTimes =
+                    new int[rows, columns];
+
+                for (int i = 0; i < rows; i++)
+                {
+                    for (int j = 0; j < columns; j++)
+                    {
+                        clone.SetupTimes[i, j] =
+                            original.SetupTimes[i, j];
+                    }
+                }
+            }
+
+            return clone;
+        }
+    }
+}
