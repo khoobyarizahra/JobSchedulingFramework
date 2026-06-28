@@ -216,14 +216,12 @@ namespace JobShopSchedulingFramework.Application
             TabuNeighborhoodExperimentResult bestTabuResult =
                 tabuResults
                     .OrderBy(resultItem => resultItem.BestCmax)
-                    .ThenBy(resultItem => resultItem.RuntimeMs)
+                    .ThenBy(resultItem => resultItem.RuntimeSeconds)
                     .First();
 
             string instanceName =
                 Path.GetFileNameWithoutExtension(fileName);
 
-            // Store all generated Gantt charts in the Results folder.
-            // Each instance gets its own subfolder so that files are not overwritten.
             string outputFolder =
                 Path.Combine(
                     GetProjectRootFolder(),
@@ -255,8 +253,10 @@ namespace JobShopSchedulingFramework.Application
                 CpSolverRunner.Run(
                     CloneInstance(result.bestInstance),
                     timeLimitSeconds: 90);
+
             Console.WriteLine("DEBUG CP status in SchedulingApplication: " + cpResult.Status);
             Console.WriteLine("DEBUG CP has feasible solution: " + cpResult.HasFeasibleSolution);
+
             int cpCmax =
                 cpResult.Cmax;
 
@@ -298,7 +298,8 @@ namespace JobShopSchedulingFramework.Application
                 }
             }
 
-            if (cpResult.HasFeasibleSolution)
+            if (cpResult.HasFeasibleSolution &&
+                cpResult.BestInstance != null)
             {
                 GantChart.CreateHtml(
                     cpResult.BestInstance,
@@ -309,16 +310,16 @@ namespace JobShopSchedulingFramework.Application
             }
 
             GantChart.CreateComparisonHtml(
-            comparisonOutputPath,
-            Path.GetFileName(initialOutputPath),
-            Path.GetFileName(bestTabuOutputPath),
-            Path.GetFileName(cpOutputPath),
-            result.bestRule.ToString(),
-            bestTabuResult.BestNeighborhoodName + " - " + bestTabuResult.RunLabel,
-            result.bestCmax,
-            bestTabuResult.BestCmax,
-            cpCmax,
-            cpResult.Status);
+                comparisonOutputPath,
+                Path.GetFileName(initialOutputPath),
+                Path.GetFileName(bestTabuOutputPath),
+                Path.GetFileName(cpOutputPath),
+                result.bestRule.ToString(),
+                bestTabuResult.BestNeighborhoodName + " - " + bestTabuResult.RunLabel,
+                result.bestCmax,
+                bestTabuResult.BestCmax,
+                cpCmax,
+                cpResult.Status);
 
             PrintFinalSummary(
                 result,
@@ -412,8 +413,8 @@ namespace JobShopSchedulingFramework.Application
                     " | Cmax: " +
                     item.BestCmax.ToString().PadRight(8) +
                     " | Runtime: " +
-                    item.RuntimeMs +
-                    " ms");
+                    item.RuntimeSeconds.ToString("F2") +
+                    " s");
             }
 
             return results;
@@ -441,9 +442,9 @@ namespace JobShopSchedulingFramework.Application
             }
             else
             {
-                Console.WriteLine("Stopping criterion: maxIterations only");
+                Console.WriteLine("Stopping criterion: instance-dependent maxIterations");
                 Console.WriteLine("Max iterations: " + maxIterations);
-                Console.WriteLine("Time limit: none");
+                Console.WriteLine("Technical safety limit: 300 seconds");
             }
 
             Instance instanceCopy =
@@ -472,9 +473,9 @@ namespace JobShopSchedulingFramework.Application
             {
                 Console.WriteLine("Tabu Search is running now.");
                 Console.WriteLine(
-                    "Please wait. This extended run has no fixed time limit and stops after " +
+                    "Please wait. This extended run has no 90-second limit and stops after " +
                     maxIterations +
-                    " iterations.");
+                    " iterations or after the 300-second technical safety limit.");
             }
 
             Console.WriteLine();
@@ -484,11 +485,13 @@ namespace JobShopSchedulingFramework.Application
 
             stopwatch.Stop();
 
+            double runtimeSeconds =
+                stopwatch.Elapsed.TotalSeconds;
+
             Console.WriteLine();
             Console.WriteLine("Result for " + neighborhoodName + " - " + runLabel);
             Console.WriteLine("Tabu Cmax: " + tabuCmax);
-            Console.WriteLine("Runtime: " + stopwatch.Elapsed.TotalSeconds.ToString("F2") + " s");
-            Console.WriteLine("Runtime ms: " + stopwatch.ElapsedMilliseconds);
+            Console.WriteLine("Runtime: " + runtimeSeconds.ToString("F2") + " s");
 
             return new TabuNeighborhoodExperimentResult
             {
@@ -497,7 +500,7 @@ namespace JobShopSchedulingFramework.Application
                 BestNeighborhoodName = neighborhoodName,
                 RunLabel = runLabel,
                 FileSuffix = fileSuffix,
-                RuntimeMs = stopwatch.ElapsedMilliseconds,
+                RuntimeSeconds = runtimeSeconds,
                 MaxIterations = maxIterations,
                 TimeLimitSeconds = timeLimitSeconds
             };
@@ -506,12 +509,11 @@ namespace JobShopSchedulingFramework.Application
         /// <summary>
         /// Calculates the maximum number of iterations for the extended run.
         /// 
-        /// The extended mode does not use a fixed time limit. Therefore, the runtime
-        /// is controlled indirectly by the number of iterations.
+        /// The extended mode does not use the 90-second time limit. Therefore, the runtime
+        /// is mainly controlled by an instance-dependent number of iterations.
         /// 
-        /// Larger instances need fewer iterations because one iteration is more expensive:
-        /// more operations create larger machine orders, more critical blocks, and more
-        /// neighborhood moves.
+        /// Larger instances receive fewer iterations because one iteration becomes more
+        /// expensive when the number of operations increases.
         /// </summary>
         private static int CalculateExtendedMaxIterations(
             Instance instance)
@@ -520,27 +522,48 @@ namespace JobShopSchedulingFramework.Application
                 instance.Jobs
                     .Sum(job => job.Operations.Count);
 
+            if (operationCount <= 0)
+            {
+                throw new InvalidOperationException(
+                    "Instance contains no operations.");
+            }
+
             if (operationCount <= 60)
+            {
+                return 250_000;
+            }
+
+            if (operationCount <= 100)
             {
                 return 200_000;
             }
 
-            if (operationCount <= 120)
+            if (operationCount <= 200)
             {
                 return 120_000;
             }
 
-            if (operationCount <= 200)
+            if (operationCount <= 300)
             {
                 return 80_000;
             }
 
-            if (operationCount <= 350)
+            if (operationCount <= 450)
             {
-                return 50_000;
+                return 40_000;
             }
 
-            return 30_000;
+            if (operationCount <= 650)
+            {
+                return 20_000;
+            }
+
+            if (operationCount <= 850)
+            {
+                return 10_000;
+            }
+
+            return 8_000;
         }
 
         private static void PrintFinalSummary(
@@ -577,7 +600,7 @@ namespace JobShopSchedulingFramework.Application
                     " | Cmax: " +
                     tabuResult.BestCmax.ToString().PadRight(8) +
                     " | Runtime: " +
-                    (tabuResult.RuntimeMs / 1000.0).ToString("F2").PadRight(8) +
+                    tabuResult.RuntimeSeconds.ToString("F2").PadRight(8) +
                     " s | Stop: " +
                     stoppingCriterion.PadRight(13) +
                     " | Improvement: " +
@@ -631,12 +654,12 @@ namespace JobShopSchedulingFramework.Application
                 if (tabuResult.TimeLimitSeconds > 0)
                 {
                     algorithmName =
-                        "Team Tabu Search N3 (90s)";
+                        "Team F Tabu Search (90s)";
                 }
                 else
                 {
                     algorithmName =
-                        "Team Tabu Search N3 (without time limit)";
+                        "Team F Tabu Search (Ohne Zeitlimit)";
                 }
 
                 rows.Add(
@@ -645,9 +668,9 @@ namespace JobShopSchedulingFramework.Application
                         InstanceSetName = instanceSetName,
                         InstanceName = instanceName,
                         Algorithm = algorithmName,
-                        Status = "FEASIBLE",
+                        Status = "Feasible",
                         ObjectiveValue = tabuResult.BestCmax,
-                        ComputationTimeSeconds = tabuResult.RuntimeMs / 1000.0
+                        ComputationTimeSeconds = tabuResult.RuntimeSeconds
                     });
             }
 
@@ -782,7 +805,7 @@ namespace JobShopSchedulingFramework.Application
             public string BestNeighborhoodName { get; set; } = "";
             public string RunLabel { get; set; } = "";
             public string FileSuffix { get; set; } = "";
-            public long RuntimeMs { get; set; }
+            public double RuntimeSeconds { get; set; }
             public int MaxIterations { get; set; }
             public int TimeLimitSeconds { get; set; }
         }

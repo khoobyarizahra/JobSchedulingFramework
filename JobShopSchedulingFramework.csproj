@@ -59,6 +59,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Sources\" />
     <Folder Include="Results\GanttCharts\" />
   </ItemGroup>
 

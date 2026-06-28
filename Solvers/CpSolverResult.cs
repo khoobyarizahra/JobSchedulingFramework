@@ -4,9 +4,9 @@ namespace JobShopSchedulingFramework.ExactSolvers
 {
     public class CpSolverResult
     {
-        public Instance BestInstance { get; set; }
+        public Instance? BestInstance { get; set; }
 
-        public int Cmax { get; set; }
+        public int Cmax { get; set; } = int.MaxValue;
 
         public string Status { get; set; } = "UNKNOWN";
 
@@ -14,7 +14,8 @@ namespace JobShopSchedulingFramework.ExactSolvers
         {
             get
             {
-                return Cmax != int.MaxValue;
+                return BestInstance != null &&
+                       Cmax != int.MaxValue;
             }
         }
     }

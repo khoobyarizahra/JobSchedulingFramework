@@ -18,6 +18,10 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
     /// A fast move preselection is used before the exact schedule recalculation:
     /// all generated moves are first estimated cheaply, and only the most promising
     /// moves are evaluated exactly. This reduces the computational effort per iteration.
+    ///
+    /// The time limit is checked not only at the beginning of each iteration,
+    /// but also during move evaluation. This prevents very long single iterations
+    /// from exceeding the 90-second limit by a large amount.
     /// </summary>
     public class TabuSearchSolver
     {
@@ -26,8 +30,13 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
         private readonly INeighborhoodDefinition neighborhood;
 
         private const int MaxExactEvaluationsPerIteration = 20;
-        private const bool VerboseOutput = false;
+        private static readonly bool VerboseOutput = false;
         private const int VerbosePrintInterval = 1000;
+
+        // Technical safety limit for the extended run.
+        // The extended run is primarily stopped by maxIterations,
+        // but this prevents very large instances from running too long.
+        private const int ExtendedModeSafetyTimeLimitSeconds = 300;
 
         // Restart is triggered after operationCount * factor iterations without global improvement.
         private const int RestartAfterNoImprovementFactor = 25;
@@ -45,7 +54,8 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             neighborhood = neighborhoodDefinition;
         }
 
-        public int Run(Instance instance)
+        public int Run(
+            Instance instance)
         {
             Stopwatch stopwatch =
                 Stopwatch.StartNew();
@@ -144,10 +154,24 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         instance,
                         currentOrders);
 
+                if (IsTimeLimitReached(
+                    useTimeLimit,
+                    stopwatch))
+                {
+                    break;
+                }
+
                 List<CriticalBlock> criticalBlocks =
                     CriticalBlockBuilder.BuildCriticalBlocks(
                         currentOrders,
                         analysisResult.criticalOperations);
+
+                if (IsTimeLimitReached(
+                    useTimeLimit,
+                    stopwatch))
+                {
+                    break;
+                }
 
                 if (VerboseOutput &&
                     iteration <= 10)
@@ -162,6 +186,13 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         instance,
                         currentOrders,
                         criticalBlocks);
+
+                if (IsTimeLimitReached(
+                    useTimeLimit,
+                    stopwatch))
+                {
+                    break;
+                }
 
                 if (VerboseOutput &&
                     ShouldPrintIterationDetails(iteration))
@@ -188,17 +219,41 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         MaxExactEvaluationsPerIteration,
                         moves.Count);
 
+                List<(Move Move, double EstimatedValue)> estimatedMoves =
+                    new List<(Move Move, double EstimatedValue)>();
+
+                foreach (Move move in moves)
+                {
+                    if (IsTimeLimitReached(
+                        useTimeLimit,
+                        stopwatch))
+                    {
+                        break;
+                    }
+
+                    double estimatedValue =
+                        MoveFastEvaluator.EstimateEvaluationValue(
+                            instance,
+                            currentOrders,
+                            analysisResult,
+                            move,
+                            tabuList,
+                            iterationsSinceImprovement);
+
+                    estimatedMoves.Add(
+                        (move, estimatedValue));
+                }
+
+                if (estimatedMoves.Count == 0)
+                {
+                    break;
+                }
+
                 List<Move> promisingMoves =
-                    moves
-                        .OrderBy(move =>
-                            MoveFastEvaluator.EstimateEvaluationValue(
-                                instance,
-                                currentOrders,
-                                analysisResult,
-                                move,
-                                tabuList,
-                                iterationsSinceImprovement))
+                    estimatedMoves
+                        .OrderBy(pair => pair.EstimatedValue)
                         .Take(exactEvaluationLimit)
+                        .Select(pair => pair.Move)
                         .ToList();
 
                 if (VerboseOutput &&
@@ -209,7 +264,7 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         promisingMoves.Count);
                 }
 
-                Move bestMove =
+                Move? bestMove =
                     null;
 
                 int bestCandidateCmax =
@@ -218,11 +273,18 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 double bestCandidateEvaluationValue =
                     double.MaxValue;
 
-                Dictionary<int, List<Operation>> bestCandidateOrders =
+                Dictionary<int, List<Operation>>? bestCandidateOrders =
                     null;
 
                 foreach (Move move in promisingMoves)
                 {
+                    if (IsTimeLimitReached(
+                        useTimeLimit,
+                        stopwatch))
+                    {
+                        break;
+                    }
+
                     Dictionary<int, List<Operation>> candidateOrders =
                         ScheduleOrderHelper.CopyMachineOrders(
                             currentOrders);
@@ -376,10 +438,30 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 
             stopwatch.Stop();
 
-            ScheduleOrderHelper.RecalculateScheduleFromMachineOrders(
-                instance,
-                bestOrders,
-                out bestCmax);
+            bool finalFeasible =
+                ScheduleOrderHelper.RecalculateScheduleFromMachineOrders(
+                    instance,
+                    bestOrders,
+                    out int finalBestCmax);
+
+            if (!finalFeasible)
+            {
+                throw new InvalidOperationException(
+                    "Stored best solution became infeasible.");
+            }
+
+            if (finalBestCmax != bestCmax)
+            {
+                Console.WriteLine(
+                    "Warning: Stored best Cmax changed after final recalculation. " +
+                    "Stored bestCmax: " +
+                    bestCmax +
+                    " | Recalculated bestOrders: " +
+                    finalBestCmax);
+
+                bestCmax =
+                    finalBestCmax;
+            }
 
             PrintCompactSummary(
                 useTimeLimit,
@@ -403,12 +485,32 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             Stopwatch stopwatch,
             int iteration)
         {
-            if (useTimeLimit)
+            if (IsTimeLimitReached(
+                useTimeLimit,
+                stopwatch))
             {
-                return stopwatch.Elapsed.TotalSeconds < timeLimitSeconds;
+                return false;
             }
 
-            return iteration < maxIterations;
+            if (!useTimeLimit &&
+                iteration >= maxIterations)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool IsTimeLimitReached(
+            bool useTimeLimit,
+            Stopwatch stopwatch)
+        {
+            if (useTimeLimit)
+            {
+                return stopwatch.Elapsed.TotalSeconds >= timeLimitSeconds;
+            }
+
+            return stopwatch.Elapsed.TotalSeconds >= ExtendedModeSafetyTimeLimitSeconds;
         }
 
         private static bool ShouldPrintIterationDetails(

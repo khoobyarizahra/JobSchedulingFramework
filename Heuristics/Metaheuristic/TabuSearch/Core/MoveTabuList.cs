@@ -15,35 +15,24 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
     /// </summary>
     public class MoveTabuList
     {
-        // Stores until which iteration a move remains tabu.
         private readonly Dictionary<string, int> tabuUntil;
-
-        // Counts how often a move has already been executed.
-        // This is long-term memory and is used for frequency penalties.
         private readonly Dictionary<string, int> moveFrequency;
-
         private readonly Random random;
 
-        // Base value for the tabu tenure.
         private readonly int baseTenure;
-
-        // Lower bound for the dynamic tenure.
         private readonly int minTenure;
-
-        // Upper bound for the dynamic tenure.
         private readonly int maxTenure;
-
-        // Defines after how many iterations the tenure is updated.
         private readonly int updateInterval;
 
-        // Current tabu tenure used by the search.
         private int currentTenure;
 
         /// <summary>
         /// Creates a new tabu list.
         ///
-        /// The base tenure is calculated from the instance size.
-        /// The actual tenure is then randomly selected within a dynamic range.
+        /// Important:
+        /// maxIterations is intentionally not used for the tenure update interval.
+        /// Otherwise, two runs of the same algorithm with different stopping criteria
+        /// would follow different search trajectories.
         /// </summary>
         public MoveTabuList(
             int numberOfJobs,
@@ -56,7 +45,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             moveFrequency =
                 new Dictionary<string, int>();
 
-            // Fixed seed for reproducible results.
             random =
                 new Random(42);
 
@@ -75,20 +63,15 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                     minTenure + 1,
                     (int)Math.Round(baseTenure * 1.2));
 
-            // The tenure is updated every 5% of the configured maximum iterations.
             updateInterval =
-                Math.Max(
-                    1,
-                    maxIterations / 20);
+                CalculateTenureUpdateInterval(
+                    numberOfJobs,
+                    numberOfMachines);
 
             currentTenure =
                 GenerateDynamicTenure();
         }
 
-        /// <summary>
-        /// Calculates the base tenure depending on the instance size.
-        /// Larger instances receive a larger tabu tenure.
-        /// </summary>
         private int CalculateBaseTenure(
             int numberOfJobs,
             int numberOfMachines)
@@ -101,9 +84,18 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 problemSize / 2);
         }
 
-        /// <summary>
-        /// Generates a new dynamic tabu tenure within the allowed tenure range.
-        /// </summary>
+        private int CalculateTenureUpdateInterval(
+            int numberOfJobs,
+            int numberOfMachines)
+        {
+            int estimatedOperationCount =
+                numberOfJobs * numberOfMachines;
+
+            return Math.Max(
+                1000,
+                estimatedOperationCount * 5);
+        }
+
         private int GenerateDynamicTenure()
         {
             return random.Next(
@@ -111,9 +103,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 maxTenure + 1);
         }
 
-        /// <summary>
-        /// Updates the current tabu tenure if the update interval is reached.
-        /// </summary>
         public void UpdateTenureIfNeeded(
             int iteration)
         {
@@ -125,12 +114,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             }
         }
 
-        /// <summary>
-        /// Checks whether a candidate move is currently tabu.
-        ///
-        /// Aspiration criterion:
-        /// A tabu move is still allowed if it improves the global best solution.
-        /// </summary>
         public bool IsTabu(
             Move move,
             int iteration,
@@ -138,8 +121,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             int bestMakespan,
             int currentCmax)
         {
-            // Aspiration criterion:
-            // If the move creates a new global best solution, it is allowed.
             if (candidateMakespan < bestMakespan)
             {
                 return false;
@@ -157,12 +138,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                    tabuUntil[moveKey];
         }
 
-        /// <summary>
-        /// Registers an executed move.
-        ///
-        /// The reverse move is stored as tabu so that the algorithm cannot
-        /// immediately undo the last move.
-        /// </summary>
         public void RegisterMove(
             Move move,
             int iteration)
@@ -178,18 +153,13 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 
             if (!moveFrequency.ContainsKey(moveKey))
             {
-                moveFrequency[moveKey] = 0;
+                moveFrequency[moveKey] =
+                    0;
             }
 
             moveFrequency[moveKey]++;
         }
 
-        /// <summary>
-        /// Returns how often a move has already been executed.
-        ///
-        /// This value is used as a frequency penalty to discourage moves
-        /// that have already been used very often.
-        /// </summary>
         public int GetFrequencyPenalty(
             Move move)
         {
@@ -204,21 +174,11 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             return moveFrequency[moveKey];
         }
 
-        /// <summary>
-        /// Clears only the short-term tabu memory.
-        ///
-        /// This is used during a restart. Old tabu restrictions should not block
-        /// the new search trajectory. The long-term move frequencies are kept,
-        /// so the algorithm still remembers which moves were used often before.
-        /// </summary>
         public void ClearShortTermMemory()
         {
             tabuUntil.Clear();
         }
 
-        /// <summary>
-        /// Returns the currently used dynamic tabu tenure.
-        /// </summary>
         public int CurrentTenure
         {
             get { return currentTenure; }
