@@ -1,10 +1,12 @@
-﻿
+﻿using System;
+using System.IO;
 
 namespace JobShopSchedulingFramework.Application
 {
     public static class InstanceFileSelector
     {
-        public static string SelectFromFolder(string folder)
+        public static string SelectFromFolder(
+            string folder)
         {
             string fullFolderPath =
                 Path.GetFullPath(folder);
@@ -14,7 +16,9 @@ namespace JobShopSchedulingFramework.Application
             Console.WriteLine();
 
             string[] files =
-                Directory.GetFiles(fullFolderPath, "*.txt");
+                Directory.GetFiles(
+                    fullFolderPath,
+                    "*.txt");
 
             if (files.Length == 0)
             {
@@ -37,10 +41,12 @@ namespace JobShopSchedulingFramework.Application
             while (true)
             {
                 string input =
-                    Console.ReadLine();
+                    Console.ReadLine() ?? "";
 
                 bool validNumber =
-                    int.TryParse(input, out int selectedIndex);
+                    int.TryParse(
+                        input,
+                        out int selectedIndex);
 
                 if (validNumber &&
                     selectedIndex >= 1 &&

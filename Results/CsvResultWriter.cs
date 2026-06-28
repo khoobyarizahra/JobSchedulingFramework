@@ -6,11 +6,23 @@ namespace JobShopSchedulingFramework.Results
     /// <summary>
     /// Writes evaluation results to semicolon-separated CSV files.
     ///
-    /// Required CSV format:
-    /// instanceSetName;instanceName;algorithm;status;objVal;compTime
+    /// Output CSV format:
+    /// instanceName;algorithm;status;objVal;compTime
+    ///
+    /// The instanceName contains the complete benchmark file name
+    /// without the .txt extension, for example:
+    /// ClassroomInstanceSet1_1, TeamA_3, TeamF_Instance1.
+    ///
+    /// The compTime value is written with a comma as decimal separator
+    /// because the CSV uses semicolons and is opened with German Excel.
+    /// Example: 4,13 instead of 4.13.
+    /// This prevents Excel from converting times such as 4.13 into dates.
     /// </summary>
     public static class CsvResultWriter
     {
+        private static readonly CultureInfo GermanCulture =
+            CultureInfo.GetCultureInfo("de-DE");
+
         /// <summary>
         /// Writes result rows to the default CSV file.
         ///
@@ -43,7 +55,8 @@ namespace JobShopSchedulingFramework.Results
                     "Results",
                     "Csv");
 
-            Directory.CreateDirectory(outputFolder);
+            Directory.CreateDirectory(
+                outputFolder);
 
             string csvPath =
                 Path.Combine(
@@ -59,7 +72,7 @@ namespace JobShopSchedulingFramework.Results
             if (writeHeader)
             {
                 lines.Add(
-                    "instanceSetName;instanceName;algorithm;status;objVal;compTime");
+                    "instanceName;algorithm;status;objVal;compTime");
             }
 
             foreach (CsvResultRow row in rows)
@@ -83,22 +96,40 @@ namespace JobShopSchedulingFramework.Results
                     Encoding.UTF8);
             }
 
-            return Path.GetFullPath(csvPath);
+            return Path.GetFullPath(
+                csvPath);
         }
 
         /// <summary>
         /// Creates one semicolon-separated CSV line from one result row.
+        ///
+        /// Only the full instanceName is written.
+        /// The instanceSetName is intentionally not written to the CSV.
         /// </summary>
         private static string CreateCsvLine(
             CsvResultRow row)
         {
             return
-                EscapeCsvValue(row.InstanceSetName) + ";" +
                 EscapeCsvValue(row.InstanceName) + ";" +
                 EscapeCsvValue(row.Algorithm) + ";" +
                 EscapeCsvValue(row.Status) + ";" +
                 row.ObjectiveValue.ToString(CultureInfo.InvariantCulture) + ";" +
-                row.ComputationTimeSeconds.ToString("F2", CultureInfo.InvariantCulture);
+                FormatComputationTime(row.ComputationTimeSeconds);
+        }
+
+        /// <summary>
+        /// Formats the computation time as a German decimal number.
+        ///
+        /// Example:
+        /// 4.13 seconds  -> 4,13
+        /// 90.00 seconds -> 90,00
+        /// </summary>
+        private static string FormatComputationTime(
+            double seconds)
+        {
+            return seconds.ToString(
+                "F2",
+                GermanCulture);
         }
 
         /// <summary>
@@ -122,6 +153,9 @@ namespace JobShopSchedulingFramework.Results
 
         /// <summary>
         /// Returns the project root folder.
+        ///
+        /// During execution, relative paths start in bin/Debug/netX.
+        /// This method moves three levels up to the project folder.
         /// </summary>
         private static string GetProjectRootFolder()
         {

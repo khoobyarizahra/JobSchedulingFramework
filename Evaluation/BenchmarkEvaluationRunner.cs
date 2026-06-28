@@ -135,6 +135,13 @@ namespace JobShopSchedulingFramework.Evaluation
             Console.WriteLine("Running: " + algorithmName);
             Console.WriteLine("Max iterations: " + maxIterations);
             Console.WriteLine("Time limit seconds: " + timeLimitSeconds);
+
+            if (timeLimitSeconds == 0)
+            {
+                Console.WriteLine("Extended mode uses instance-dependent maxIterations.");
+                Console.WriteLine("Technical safety limit inside TabuSearchSolver: 300 seconds.");
+            }
+
             Console.WriteLine();
 
             Instance instanceCopy =
@@ -166,32 +173,54 @@ namespace JobShopSchedulingFramework.Evaluation
         }
 
         private static int CalculateExtendedMaxIterations(
-            Instance instance)
+    Instance instance)
         {
             int operationCount =
-                instance.Jobs.Sum(job => job.Operations.Count);
+                instance.Jobs
+                    .Sum(job => job.Operations.Count);
+
+            if (operationCount <= 0)
+            {
+                throw new InvalidOperationException(
+                    "Instance contains no operations.");
+            }
 
             if (operationCount <= 60)
+            {
+                return 250_000;
+            }
+
+            if (operationCount <= 100)
             {
                 return 200_000;
             }
 
-            if (operationCount <= 120)
+            if (operationCount <= 200)
             {
                 return 120_000;
             }
 
-            if (operationCount <= 200)
+            if (operationCount <= 300)
             {
                 return 80_000;
             }
 
-            if (operationCount <= 350)
+            if (operationCount <= 450)
             {
-                return 50_000;
+                return 40_000;
             }
 
-            return 30_000;
+            if (operationCount <= 650)
+            {
+                return 20_000;
+            }
+
+            if (operationCount <= 850)
+            {
+                return 10_000;
+            }
+
+            return 8_000;
         }
 
         private static string GetProjectRootFolder()
@@ -205,29 +234,26 @@ namespace JobShopSchedulingFramework.Evaluation
         private static (string InstanceSetName, string InstanceName) ExtractInstanceInfo(
             string fileNameWithoutExtension)
         {
+            string instanceName =
+                fileNameWithoutExtension;
+
             int lastUnderscoreIndex =
                 fileNameWithoutExtension.LastIndexOf('_');
 
             if (lastUnderscoreIndex < 0)
             {
-                return (fileNameWithoutExtension, "1");
+                return (fileNameWithoutExtension, instanceName);
             }
 
             string instanceSetName =
-                fileNameWithoutExtension.Substring(0, lastUnderscoreIndex);
-
-            string instanceName =
-                fileNameWithoutExtension.Substring(lastUnderscoreIndex + 1);
+                fileNameWithoutExtension.Substring(
+                    0,
+                    lastUnderscoreIndex);
 
             if (instanceSetName == "Team F")
             {
-                instanceSetName = "TeamF";
-            }
-
-            if (instanceName.StartsWith("Instance"))
-            {
-                instanceName =
-                    instanceName.Replace("Instance", "");
+                instanceSetName =
+                    "TeamF";
             }
 
             return (instanceSetName, instanceName);

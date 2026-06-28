@@ -119,7 +119,7 @@ namespace JobShopSchedulingFramework.Visualisation
                     status,
                     maxEndTime);
 
-            string directory =
+            string? directory =
                 Path.GetDirectoryName(outputPath);
 
             if (!string.IsNullOrWhiteSpace(directory))
@@ -352,8 +352,8 @@ iframe {{
 </body>
 </html>";
 
-            string directory =
-                Path.GetDirectoryName(outputPath);
+            string? directory =
+                 Path.GetDirectoryName(outputPath);
 
             if (!string.IsNullOrWhiteSpace(directory))
             {
