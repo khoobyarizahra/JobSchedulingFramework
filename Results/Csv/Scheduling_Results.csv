@@ -1,3 +1,3 @@
 ﻿instanceName;algorithm;status;objVal;compTime
-TeamB_3;Team F Tabu Search (90s);Feasible;2241;0,15
-TeamB_3;Team F Tabu Search (Ohne Zeitlimit);Feasible;2241;0,06
+TeamA_4;Team F Tabu Search (90s);Feasible;7506;90,01
+TeamA_4;Team F Tabu Search (Ohne Zeitlimit);Feasible;7506;219,02

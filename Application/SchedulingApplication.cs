@@ -19,10 +19,6 @@ namespace JobShopSchedulingFramework.Application
     {
         private const int TimeLimit90Seconds = 90;
 
-        // Safety limit for the 90s run.
-        // The actual stopping criterion is the time limit.
-        private const int MaxIterationsForTimeLimitedRun = 1_000_000;
-
         public static void Run(string[] args)
         {
             PrintHeader();
@@ -202,6 +198,11 @@ namespace JobShopSchedulingFramework.Application
             Console.WriteLine(fileName);
             Console.WriteLine();
 
+            /*
+            The heuristic experiment creates several initial schedules using
+            different dispatching rules. The best heuristic schedule is used as
+            the common starting solution for all final Tabu Search runs.
+            */
             InitialHeuristicResult result =
                 HeuristicExperiment.Run(fileName);
 
@@ -366,9 +367,20 @@ namespace JobShopSchedulingFramework.Application
             List<TabuNeighborhoodExperimentResult> results =
                 new List<TabuNeighborhoodExperimentResult>();
 
+            int instanceDependentMaxIterations =
+                CalculateInstanceDependentMaxIterations(
+                    result.bestInstance);
+
             if (runMode == TabuRunMode.TimeLimit90Seconds ||
                 runMode == TabuRunMode.Both)
             {
+                /*
+                90-second mode:
+                The instance-dependent iteration limit is checked first.
+                The 90-second time limit remains the hard upper bound.
+                This prevents unnecessary runtime on instances where the
+                iteration budget is already sufficient before 90 seconds.
+                */
                 TabuNeighborhoodExperimentResult timeLimitedResult =
                     RunSingleFinalTabuSearch(
                         result,
@@ -376,7 +388,7 @@ namespace JobShopSchedulingFramework.Application
                         new AllPairSwapNeighborhood(),
                         "90s",
                         "tabu_search_90s",
-                        maxIterations: MaxIterationsForTimeLimitedRun,
+                        maxIterations: instanceDependentMaxIterations,
                         timeLimitSeconds: TimeLimit90Seconds);
 
                 results.Add(timeLimitedResult);
@@ -385,10 +397,12 @@ namespace JobShopSchedulingFramework.Application
             if (runMode == TabuRunMode.ExtendedWithoutFixedTimeLimit ||
                 runMode == TabuRunMode.Both)
             {
-                int extendedMaxIterations =
-                    CalculateExtendedMaxIterations(
-                        result.bestInstance);
-
+                /*
+                Extended mode:
+                This mode uses the same instance-dependent iteration limit,
+                but it does not use the fixed 90-second time limit. The solver
+                still has a technical safety limit of 300 seconds.
+                */
                 TabuNeighborhoodExperimentResult extendedResult =
                     RunSingleFinalTabuSearch(
                         result,
@@ -396,7 +410,7 @@ namespace JobShopSchedulingFramework.Application
                         new AllPairSwapNeighborhood(),
                         "Extended without fixed time limit",
                         "tabu_search_extended",
-                        maxIterations: extendedMaxIterations,
+                        maxIterations: instanceDependentMaxIterations,
                         timeLimitSeconds: 0);
 
                 results.Add(extendedResult);
@@ -436,13 +450,13 @@ namespace JobShopSchedulingFramework.Application
 
             if (timeLimitSeconds > 0)
             {
-                Console.WriteLine("Stopping criterion: time limit");
-                Console.WriteLine("Time limit: " + timeLimitSeconds + " seconds");
-                Console.WriteLine("Max iterations safety limit: " + maxIterations);
+                Console.WriteLine("Stopping criteria: instance-dependent maxIterations or time limit");
+                Console.WriteLine("Max iterations: " + maxIterations);
+                Console.WriteLine("Hard time limit: " + timeLimitSeconds + " seconds");
             }
             else
             {
-                Console.WriteLine("Stopping criterion: instance-dependent maxIterations");
+                Console.WriteLine("Stopping criteria: instance-dependent maxIterations or technical safety limit");
                 Console.WriteLine("Max iterations: " + maxIterations);
                 Console.WriteLine("Technical safety limit: 300 seconds");
             }
@@ -465,17 +479,19 @@ namespace JobShopSchedulingFramework.Application
             {
                 Console.WriteLine("Tabu Search is running now.");
                 Console.WriteLine(
-                    "Please wait. This run uses a " +
+                    "Please wait. This run stops after " +
+                    maxIterations +
+                    " iterations or after " +
                     timeLimitSeconds +
-                    "-second time limit.");
+                    " seconds, whichever occurs first.");
             }
             else
             {
                 Console.WriteLine("Tabu Search is running now.");
                 Console.WriteLine(
-                    "Please wait. This extended run has no 90-second limit and stops after " +
+                    "Please wait. This extended run stops after " +
                     maxIterations +
-                    " iterations or after the 300-second technical safety limit.");
+                    " iterations or after the 300-second technical safety limit, whichever occurs first.");
             }
 
             Console.WriteLine();
@@ -506,16 +522,7 @@ namespace JobShopSchedulingFramework.Application
             };
         }
 
-        /// <summary>
-        /// Calculates the maximum number of iterations for the extended run.
-        /// 
-        /// The extended mode does not use the 90-second time limit. Therefore, the runtime
-        /// is mainly controlled by an instance-dependent number of iterations.
-        /// 
-        /// Larger instances receive fewer iterations because one iteration becomes more
-        /// expensive when the number of operations increases.
-        /// </summary>
-        private static int CalculateExtendedMaxIterations(
+        private static int CalculateInstanceDependentMaxIterations(
             Instance instance)
         {
             int operationCount =
@@ -528,6 +535,14 @@ namespace JobShopSchedulingFramework.Application
                     "Instance contains no operations.");
             }
 
+            /*
+            The operation count is used as an indicator of the instance size.
+
+            Small instances receive a larger iteration budget because one
+            iteration is relatively cheap. Large instances receive a smaller
+            iteration budget because critical path analysis, critical block
+            construction and neighborhood evaluation become more expensive.
+            */
             if (operationCount <= 60)
             {
                 return 250_000;
@@ -592,8 +607,8 @@ namespace JobShopSchedulingFramework.Application
 
                 string stoppingCriterion =
                     tabuResult.TimeLimitSeconds > 0
-                        ? "time limit"
-                        : "maxIterations";
+                        ? "iterations/time"
+                        : "iterations/safety";
 
                 Console.WriteLine(
                     ("Tabu Search N3 (" + tabuResult.RunLabel + ")").PadRight(55) +
@@ -602,7 +617,7 @@ namespace JobShopSchedulingFramework.Application
                     " | Runtime: " +
                     tabuResult.RuntimeSeconds.ToString("F2").PadRight(8) +
                     " s | Stop: " +
-                    stoppingCriterion.PadRight(13) +
+                    stoppingCriterion.PadRight(17) +
                     " | Improvement: " +
                     improvementPercent.ToString("F2") +
                     "%");
@@ -648,13 +663,6 @@ namespace JobShopSchedulingFramework.Application
             return "VALID SCHEDULE";
         }
 
-        /// <summary>
-        /// Creates the CSV result rows required for the project submission.
-        ///
-        /// The CSV submission contains only the results of the final metaheuristic.
-        /// CP solver and initial heuristic results are used for comparison, but they
-        /// are not written to the submission CSV.
-        /// </summary>
         private static List<CsvResultRow> CreateCsvResultRows(
             string instanceFileName,
             List<TabuNeighborhoodExperimentResult> tabuResults)
@@ -700,12 +708,6 @@ namespace JobShopSchedulingFramework.Application
             return rows;
         }
 
-        /// <summary>
-        /// Extracts the instance set name from the instance file name.
-        ///
-        /// Example:
-        /// ClassroomInstanceSet3_3.txt -> ClassroomInstanceSet3
-        /// </summary>
         private static string ExtractInstanceSetName(
             string instanceFileName)
         {
@@ -735,12 +737,6 @@ namespace JobShopSchedulingFramework.Application
             return "UnknownInstanceSet";
         }
 
-        /// <summary>
-        /// Returns the project root folder.
-        /// 
-        /// During execution, relative paths start in bin/Debug/netX.
-        /// This method moves three levels up to the project folder.
-        /// </summary>
         private static string GetProjectRootFolder()
         {
             return Path.GetFullPath(

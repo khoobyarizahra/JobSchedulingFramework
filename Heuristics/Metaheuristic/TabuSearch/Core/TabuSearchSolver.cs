@@ -485,15 +485,23 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             Stopwatch stopwatch,
             int iteration)
         {
-            if (IsTimeLimitReached(
-                useTimeLimit,
-                stopwatch))
+            /*
+            The global iteration limit is checked for both run modes.
+
+            In the 90-second mode, maxIterations acts as an additional stopping
+            criterion before the hard 90-second time limit is reached.
+
+            In the extended mode, maxIterations is the main stopping criterion,
+            while the 300-second technical safety limit prevents excessive runtimes.
+            */
+            if (iteration >= maxIterations)
             {
                 return false;
             }
 
-            if (!useTimeLimit &&
-                iteration >= maxIterations)
+            if (IsTimeLimitReached(
+                useTimeLimit,
+                stopwatch))
             {
                 return false;
             }
