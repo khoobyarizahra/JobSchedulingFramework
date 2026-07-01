@@ -269,6 +269,7 @@ namespace JobShopSchedulingFramework.Visualisation
         }
         public static void CreateComparisonHtml(
     string outputPath,
+    string fileName,
     string initialChartFile,
     string tabuChartFile,
     string cpChartFile,
@@ -327,6 +328,9 @@ iframe {{
     <h1>Initial Heuristic vs Tabu Search</h1>
 
     <div class=""summary"">
+
+    <b>Instance:</b> {WebUtility.HtmlEncode(Path.GetFileName(fileName))}<br><br>
+
     <b>Initial heuristic:</b> {WebUtility.HtmlEncode(initialAlgorithmName)}<br>
     <b>Initial Cmax:</b> {initialCmax}<br><br>
 
@@ -340,11 +344,11 @@ iframe {{
     <b>Tabu Improvement:</b> {improvement} ({improvementPercent:F2}%)
     </div>
 
-    <h2>Initial Heuristic Schedule</h2>
-    <iframe src=""{WebUtility.HtmlEncode(initialChartFile)}""></iframe>
-
     <h2>Tabu Search Schedule</h2>
     <iframe src=""{WebUtility.HtmlEncode(tabuChartFile)}""></iframe>
+
+    <h2>Initial Heuristic Schedule</h2>
+    <iframe src=""{WebUtility.HtmlEncode(initialChartFile)}""></iframe>
 
     <h2>CP Solver Schedule</h2>
     <iframe src=""{WebUtility.HtmlEncode(cpChartFile)}""></iframe>
