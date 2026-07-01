@@ -254,9 +254,6 @@ namespace JobShopSchedulingFramework.Application
                     CloneInstance(result.bestInstance),
                     timeLimitSeconds: 90);
 
-            Console.WriteLine("DEBUG CP status in SchedulingApplication: " + cpResult.Status);
-            Console.WriteLine("DEBUG CP has feasible solution: " + cpResult.HasFeasibleSolution);
-
             int cpCmax =
                 cpResult.Cmax;
 
@@ -272,7 +269,7 @@ namespace JobShopSchedulingFramework.Application
                 initialOutputPath,
                 "Initial Heuristic - " + result.bestRule,
                 result.bestCmax,
-                "FEASIBLE");
+                "VALID SCHEDULE");
 
             string bestTabuOutputPath =
                 "";
@@ -289,7 +286,9 @@ namespace JobShopSchedulingFramework.Application
                     tabuOutputPath,
                     "Tabu Search - " + tabuResult.BestNeighborhoodName + " - " + tabuResult.RunLabel,
                     tabuResult.BestCmax,
-                    "FEASIBLE");
+                    GetTabuScheduleStatus(
+                        tabuResult.BestCmax,
+                        cpResult));
 
                 if (tabuResult == bestTabuResult)
                 {
@@ -306,7 +305,7 @@ namespace JobShopSchedulingFramework.Application
                     cpOutputPath,
                     "CP Solver",
                     cpResult.Cmax,
-                    "OPTIMAL / BEST FOUND");
+                    cpResult.Status);
             }
 
             GantChart.CreateComparisonHtml(
@@ -623,6 +622,29 @@ namespace JobShopSchedulingFramework.Application
                     "CP Solver".PadRight(40) +
                     " | Status: NO FEASIBLE SOLUTION FOUND");
             }
+        }
+
+        /*
+        The status inside a Gantt chart describes the displayed schedule, not the
+        mathematical proof status of the algorithm. Tabu Search can create a valid
+        schedule and can even reach the CP optimum, but it does not prove optimality
+        by itself.
+        */
+        private static string GetTabuScheduleStatus(
+            int tabuCmax,
+            CpSolverResult cpResult)
+        {
+            if (cpResult.HasFeasibleSolution &&
+                string.Equals(
+                    cpResult.Status,
+                    "Optimal",
+                    StringComparison.OrdinalIgnoreCase) &&
+                tabuCmax == cpResult.Cmax)
+            {
+                return "VALID SCHEDULE - CP OPTIMUM REACHED";
+            }
+
+            return "VALID SCHEDULE";
         }
 
         /// <summary>
