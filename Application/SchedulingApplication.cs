@@ -310,6 +310,7 @@ namespace JobShopSchedulingFramework.Application
 
             GantChart.CreateComparisonHtml(
                 comparisonOutputPath,
+                fileName,
                 Path.GetFileName(initialOutputPath),
                 Path.GetFileName(bestTabuOutputPath),
                 Path.GetFileName(cpOutputPath),
