@@ -278,7 +278,8 @@ namespace JobShopSchedulingFramework.Visualisation
     int initialCmax,
     int tabuCmax,
     int cpCmax,
-    string cpStatus)
+    string cpStatus,
+    double runtimeSeconds)
         {
             int improvement =
                 initialCmax - tabuCmax;
@@ -295,6 +296,11 @@ namespace JobShopSchedulingFramework.Visualisation
                 cpCmax > 0
                     ? (double)gapToCp / cpCmax * 100.0
                     : 0.0;
+
+            string tabuStatus =
+                gapToCp == 0
+                    ? "Optimal"
+                    : "Feasible";
 
             string html =
         $@"<!DOCTYPE html>
@@ -328,14 +334,16 @@ iframe {{
     <h1>Initial Heuristic vs Tabu Search</h1>
 
     <div class=""summary"">
-
+   
     <b>Instance:</b> {WebUtility.HtmlEncode(Path.GetFileName(fileName))}<br><br>
 
     <b>Initial heuristic:</b> {WebUtility.HtmlEncode(initialAlgorithmName)}<br>
     <b>Initial Cmax:</b> {initialCmax}<br><br>
 
     <b>Tabu Search:</b> {WebUtility.HtmlEncode(tabuAlgorithmName)}<br>
-    <b>Tabu Cmax:</b> {tabuCmax}<br><br>
+    <b>Tabu Cmax:</b> {tabuCmax}<br>
+    <b>Tabu Status:</b> {tabuStatus}<br>
+    <b>Tabu Runtime:</b> {runtimeSeconds:F2} s<br><br>
 
     <b>CP Solver:</b> {WebUtility.HtmlEncode(cpStatus)}<br>
     <b>CP Cmax:</b> {cpCmax}<br>

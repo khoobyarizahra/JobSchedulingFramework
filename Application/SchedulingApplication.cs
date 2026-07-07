@@ -21,6 +21,7 @@ namespace JobShopSchedulingFramework.Application
 
         public static void Run(string[] args)
         {
+            
             PrintHeader();
 
             string? instanceFolder =
@@ -98,8 +99,10 @@ namespace JobShopSchedulingFramework.Application
                     return null;
                 }
 
+
                 Console.Write("Invalid input. Please enter 1, 2, 3, or 4: ");
             }
+
         }
 
         private static TabuRunMode SelectTabuRunMode()
@@ -189,7 +192,7 @@ namespace JobShopSchedulingFramework.Application
             Console.WriteLine(outputFolder);
             Console.WriteLine();
         }
-
+        
         private static void RunHeuristicExperiment(
             string fileName,
             TabuRunMode runMode)
@@ -203,157 +206,158 @@ namespace JobShopSchedulingFramework.Application
             different dispatching rules. The best heuristic schedule is used as
             the common starting solution for all final Tabu Search runs.
             */
-            InitialHeuristicResult result =
-                HeuristicExperiment.Run(fileName);
+        InitialHeuristicResult result =
+              HeuristicExperiment.Run(fileName);
 
-            Instance initialInstanceForChart =
-                CloneInstance(result.bestInstance);
+          Instance initialInstanceForChart =
+              CloneInstance(result.bestInstance);
 
-            List<TabuNeighborhoodExperimentResult> tabuResults =
-                RunFinalTabuSearch(
-                    result,
-                    runMode);
+          List<TabuNeighborhoodExperimentResult> tabuResults =
+              RunFinalTabuSearch(
+                  result,
+                  runMode);
 
-            TabuNeighborhoodExperimentResult bestTabuResult =
-                tabuResults
-                    .OrderBy(resultItem => resultItem.BestCmax)
-                    .ThenBy(resultItem => resultItem.RuntimeSeconds)
-                    .First();
+          TabuNeighborhoodExperimentResult bestTabuResult =
+              tabuResults
+                  .OrderBy(resultItem => resultItem.BestCmax)
+                  .ThenBy(resultItem => resultItem.RuntimeSeconds)
+                  .First();
 
-            string instanceName =
-                Path.GetFileNameWithoutExtension(fileName);
+          string instanceName =
+              Path.GetFileNameWithoutExtension(fileName);
 
-            string outputFolder =
-                Path.Combine(
-                    GetProjectRootFolder(),
-                    "Results",
-                    "GanttCharts",
-                    instanceName);
+          string outputFolder =
+              Path.Combine(
+                  GetProjectRootFolder(),
+                  "Results",
+                  "GanttCharts",
+                  instanceName);
 
-            Directory.CreateDirectory(outputFolder);
+          Directory.CreateDirectory(outputFolder);
 
-            string initialOutputPath =
-                Path.Combine(
-                    outputFolder,
-                    instanceName + "_initial_heuristic.html");
+          string initialOutputPath =
+              Path.Combine(
+                  outputFolder,
+                  instanceName + "_initial_heuristic.html");
 
-            string cpOutputPath =
-                Path.Combine(
-                    outputFolder,
-                    instanceName + "_cp_solver.html");
+          string cpOutputPath =
+              Path.Combine(
+                  outputFolder,
+                  instanceName + "_cp_solver.html");
 
-            string comparisonOutputPath =
-                Path.Combine(
-                    outputFolder,
-                    instanceName + "_comparison.html");
+          string comparisonOutputPath =
+              Path.Combine(
+                  outputFolder,
+                  instanceName + "_comparison.html");
 
-            Console.WriteLine();
-            Console.WriteLine("CP solver starts now...");
+          Console.WriteLine();
+          Console.WriteLine("CP solver starts now...");
 
-            CpSolverResult cpResult =
-                CpSolverRunner.Run(
-                    CloneInstance(result.bestInstance),
-                    timeLimitSeconds: 90);
+          CpSolverResult cpResult =
+              CpSolverRunner.Run(
+                  CloneInstance(result.bestInstance),
+                  timeLimitSeconds: 90);
 
-            int cpCmax =
-                cpResult.Cmax;
+          int cpCmax =
+              cpResult.Cmax;
 
-            Console.WriteLine("CP solver finished. CP Cmax: " + cpCmax);
+          Console.WriteLine("CP solver finished. CP Cmax: " + cpCmax);
 
-            CpSolverRunner.PrintComparison(
-                result.bestCmax,
-                bestTabuResult.BestCmax,
-                cpCmax);
+          CpSolverRunner.PrintComparison(
+              result.bestCmax,
+              bestTabuResult.BestCmax,
+              cpCmax);
 
-            GantChart.CreateHtml(
-                initialInstanceForChart,
-                initialOutputPath,
-                "Initial Heuristic - " + result.bestRule,
-                result.bestCmax,
-                "VALID SCHEDULE");
+          GantChart.CreateHtml(
+              initialInstanceForChart,
+              initialOutputPath,
+              "Initial Heuristic - " + result.bestRule,
+              result.bestCmax,
+              "VALID SCHEDULE");
 
-            string bestTabuOutputPath =
-                "";
+          string bestTabuOutputPath =
+              "";
 
-            foreach (TabuNeighborhoodExperimentResult tabuResult in tabuResults)
-            {
-                string tabuOutputPath =
-                    Path.Combine(
-                        outputFolder,
-                        instanceName + "_" + tabuResult.FileSuffix + ".html");
+          foreach (TabuNeighborhoodExperimentResult tabuResult in tabuResults)
+          {
+              string tabuOutputPath =
+                  Path.Combine(
+                      outputFolder,
+                      instanceName + "_" + tabuResult.FileSuffix + ".html");
 
-                GantChart.CreateHtml(
-                    tabuResult.BestInstance,
-                    tabuOutputPath,
-                    "Tabu Search - " + tabuResult.BestNeighborhoodName + " - " + tabuResult.RunLabel,
-                    tabuResult.BestCmax,
-                    GetTabuScheduleStatus(
-                        tabuResult.BestCmax,
-                        cpResult));
+              GantChart.CreateHtml(
+                  tabuResult.BestInstance,
+                  tabuOutputPath,
+                  "Tabu Search - " + tabuResult.BestNeighborhoodName + " - " + tabuResult.RunLabel,
+                  tabuResult.BestCmax,
+                  GetTabuScheduleStatus(
+                      tabuResult.BestCmax,
+                      cpResult));
 
-                if (tabuResult == bestTabuResult)
-                {
-                    bestTabuOutputPath =
-                        tabuOutputPath;
-                }
-            }
+              if (tabuResult == bestTabuResult)
+              {
+                  bestTabuOutputPath =
+                      tabuOutputPath;
+              }
+          }
 
-            if (cpResult.HasFeasibleSolution &&
-                cpResult.BestInstance != null)
-            {
-                GantChart.CreateHtml(
-                    cpResult.BestInstance,
-                    cpOutputPath,
-                    "CP Solver",
-                    cpResult.Cmax,
-                    cpResult.Status);
-            }
+          if (cpResult.HasFeasibleSolution &&
+              cpResult.BestInstance != null)
+          {
+              GantChart.CreateHtml(
+                  cpResult.BestInstance,
+                  cpOutputPath,
+                  "CP Solver",
+                  cpResult.Cmax,
+                  cpResult.Status);
+          }
 
-            GantChart.CreateComparisonHtml(
-                comparisonOutputPath,
-                fileName,
-                Path.GetFileName(initialOutputPath),
-                Path.GetFileName(bestTabuOutputPath),
-                Path.GetFileName(cpOutputPath),
-                result.bestRule.ToString(),
-                bestTabuResult.BestNeighborhoodName + " - " + bestTabuResult.RunLabel,
-                result.bestCmax,
-                bestTabuResult.BestCmax,
-                cpCmax,
-                cpResult.Status);
+          GantChart.CreateComparisonHtml(
+              comparisonOutputPath,
+              fileName,
+              Path.GetFileName(initialOutputPath),
+              Path.GetFileName(bestTabuOutputPath),
+              Path.GetFileName(cpOutputPath),
+              result.bestRule.ToString(),
+              bestTabuResult.BestNeighborhoodName + " - " + bestTabuResult.RunLabel,
+              result.bestCmax,
+              bestTabuResult.BestCmax,
+              cpCmax,
+              cpResult.Status,
+              bestTabuResult.RuntimeSeconds);
 
-            PrintFinalSummary(
-                result,
-                tabuResults,
-                cpResult);
+          PrintFinalSummary(
+              result,
+              tabuResults,
+              cpResult);
 
-            List<CsvResultRow> csvRows =
-                CreateCsvResultRows(
-                    fileName,
-                    tabuResults);
+          List<CsvResultRow> csvRows =
+              CreateCsvResultRows(
+                  fileName,
+                  tabuResults);
 
-            string csvOutputPath =
-                CsvResultWriter.WriteResults(
-                    csvRows);
+          string csvOutputPath =
+              CsvResultWriter.WriteResults(
+                  csvRows);
 
-            Console.WriteLine();
-            Console.WriteLine("CSV result file updated:");
-            Console.WriteLine(csvOutputPath);
+          Console.WriteLine();
+          Console.WriteLine("CSV result file updated:");
+          Console.WriteLine(csvOutputPath);
 
-            Console.WriteLine();
-            Console.WriteLine("Gantt charts created in:");
-            Console.WriteLine(outputFolder);
+          Console.WriteLine();
+          Console.WriteLine("Gantt charts created in:");
+          Console.WriteLine(outputFolder);
 
-            Console.WriteLine();
-            Console.WriteLine("Comparison Gantt chart created:");
-            Console.WriteLine(comparisonOutputPath);
+          Console.WriteLine();
+          Console.WriteLine("Comparison Gantt chart created:");
+          Console.WriteLine(comparisonOutputPath);
 
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = Path.GetFullPath(comparisonOutputPath),
-                UseShellExecute = true
-            });
-        }
+          Process.Start(new ProcessStartInfo
+          {
+              FileName = Path.GetFullPath(comparisonOutputPath),
+              UseShellExecute = true
+          });
+      }
 
         private static List<TabuNeighborhoodExperimentResult> RunFinalTabuSearch(
             InitialHeuristicResult result,
@@ -809,6 +813,7 @@ namespace JobShopSchedulingFramework.Application
 
             return clone;
         }
+
 
         private enum TabuRunMode
         {
