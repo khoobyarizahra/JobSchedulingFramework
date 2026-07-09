@@ -83,6 +83,92 @@ namespace JobShopSchedulingFramework.Evaluation
             return variants;
         }
 
+        public static List<TabuEvaluationVariant> CreateMoveSelectionComparisonVariants()
+        {
+            /*
+            Diese Variantenliste untersucht gezielt die Rolle der schnellen
+            Move-Abschätzung.
+
+            In der bisherigen Baseline werden alle erzeugten Moves zunächst schnell
+            abgeschätzt. Anschließend werden nur die besten Kandidaten exakt bewertet.
+
+            Die neuen Varianten deaktivieren diese Abschätzung vollständig:
+            - einmal mit exakter Bewertung aller generierten Moves,
+            - einmal mit zufälliger Auswahl von 20 Moves.
+
+            Dadurch kann geprüft werden, ob die Abschätzung gute Moves tatsächlich
+            besser vorselektiert als eine zufällige Auswahl oder eine vollständige
+            exakte Bewertung.
+            */
+
+            return new List<TabuEvaluationVariant>
+            {
+                new TabuEvaluationVariant(
+                    variantName: "Estimate_Top20",
+                    category: "MoveSelection",
+                    description: "Baseline der Move-Auswahl: Alle Moves werden schnell abgeschätzt, danach werden die besten 20 Kandidaten exakt bewertet.",
+                    settingsFactory: (maxIterations, timeLimitSeconds) =>
+                    {
+                        TabuSearchSettings settings =
+                            CreateDefaultSettings(
+                                maxIterations,
+                                timeLimitSeconds);
+
+                        settings.MoveSelectionMode =
+                            MoveSelectionMode.EstimatedTopCandidates;
+
+                        settings.MaxExactEvaluationsPerIteration =
+                            20;
+
+                        return settings;
+                    },
+                    neighborhoodFactory: () => new AllPairSwapNeighborhood(),
+                    isBaseline: true),
+
+                new TabuEvaluationVariant(
+                    variantName: "NoEstimate_AllExact",
+                    category: "MoveSelection",
+                    description: "Keine schnelle Move-Abschätzung. Alle generierten Moves werden exakt bewertet, soweit das Zeitlimit dies erlaubt.",
+                    settingsFactory: (maxIterations, timeLimitSeconds) =>
+                    {
+                        TabuSearchSettings settings =
+                            CreateDefaultSettings(
+                                maxIterations,
+                                timeLimitSeconds);
+
+                        settings.MoveSelectionMode =
+                            MoveSelectionMode.NoEstimationAllExact;
+
+                        return settings;
+                    },
+                    neighborhoodFactory: () => new AllPairSwapNeighborhood()),
+
+                new TabuEvaluationVariant(
+                    variantName: "NoEstimate_Random20",
+                    category: "MoveSelection",
+                    description: "Keine schnelle Move-Abschätzung. Pro Iteration werden zufällig 20 Moves ausgewählt und exakt bewertet.",
+                    settingsFactory: (maxIterations, timeLimitSeconds) =>
+                    {
+                        TabuSearchSettings settings =
+                            CreateDefaultSettings(
+                                maxIterations,
+                                timeLimitSeconds);
+
+                        settings.MoveSelectionMode =
+                            MoveSelectionMode.NoEstimationRandomCandidates;
+
+                        settings.MaxExactEvaluationsPerIteration =
+                            20;
+
+                        settings.RandomMoveSelectionSeed =
+                            321;
+
+                        return settings;
+                    },
+                    neighborhoodFactory: () => new AllPairSwapNeighborhood())
+            };
+        }
+
         public static List<TabuEvaluationVariant> CreateNeighborhoodComparisonVariants()
         {
             /*

@@ -22,22 +22,22 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
     - kritische Operationen bestimmen,
     - kritische Blöcke bilden,
     - Nachbarschaftsmoves erzeugen,
-    - Moves schnell abschätzen,
-    - nur die besten Kandidaten exakt bewerten,
+    - Moves für die exakte Bewertung auswählen,
+    - ausgewählte Moves exakt bewerten,
     - Tabu-Regeln und Aspiration anwenden,
     - besten zulässigen Move übernehmen,
     - globale Bestlösung speichern,
     - bei Stagnation optional Restart ausführen.
 
-    Refactoring-Ziel:
-    Die ursprüngliche Logik bleibt mit den Default-Parametern erhalten. Gleichzeitig
-    werden wichtige Komponenten wie Settings, exakte Move-Bewertung, Restart und
-    Statistik sauberer getrennt, damit spätere Experimente einfacher möglich sind.
+    Über MoveSelectionMode kann experimentell untersucht werden, ob die schnelle
+    Move-Abschätzung hilfreich ist oder ob bessere Ergebnisse entstehen, wenn sie
+    vollständig deaktiviert wird.
     */
     public class TabuSearchSolver
     {
         private readonly TabuSearchSettings settings;
         private readonly INeighborhoodDefinition neighborhood;
+        private readonly Random randomMoveSelector;
 
         public TabuSearchSolver(
             int maxIterations,
@@ -62,6 +62,10 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
         {
             this.settings = settings;
             neighborhood = neighborhoodDefinition;
+
+            randomMoveSelector =
+                new Random(
+                    settings.RandomMoveSelectionSeed);
         }
 
         public int Run(
@@ -270,8 +274,15 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                     break;
                 }
 
-                List<MoveCandidate> estimatedMoves =
-                    EstimateMoves(
+                /*
+                Auswahl der Moves für die exakte Bewertung.
+
+                Im Baseline-Modus werden Moves zuerst schnell abgeschätzt.
+                Für die neue Evaluation kann diese Abschätzung vollständig
+                deaktiviert werden.
+                */
+                List<Move> promisingMoves =
+                    SelectMovesForExactEvaluation(
                         instance,
                         currentOrders,
                         analysisResult,
@@ -290,22 +301,13 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                     break;
                 }
 
-                if (estimatedMoves.Count == 0)
+                if (promisingMoves.Count == 0)
                 {
                     statistics.StopReason =
                         StopReason.NoEstimatedMoves;
 
                     break;
                 }
-
-                List<Move> promisingMoves =
-                    estimatedMoves
-                        .OrderBy(candidate => candidate.EstimatedEvaluationValue)
-                        .Take(Math.Min(
-                            settings.MaxExactEvaluationsPerIteration,
-                            estimatedMoves.Count))
-                        .Select(candidate => candidate.Move)
-                        .ToList();
 
                 if (settings.VerboseOutput &&
                     ShouldPrintIterationDetails(iteration))
@@ -316,7 +318,7 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 }
 
                 /*
-                Die vielversprechendsten Moves werden exakt bewertet.
+                Die ausgewählten Moves werden exakt bewertet.
                 Dabei wird der Move auf eine Kopie der Maschinenreihenfolge angewendet
                 und der Schedule vollständig neu berechnet.
                 */
@@ -593,6 +595,109 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             }
 
             return estimatedMoves;
+        }
+
+        private List<Move> SelectMovesForExactEvaluation(
+            Instance instance,
+            Dictionary<int, List<Operation>> currentOrders,
+            CriticalOperationAnalysisResult analysisResult,
+            List<Move> moves,
+            MoveTabuList tabuList,
+            int iterationsSinceImprovement,
+            bool useTimeLimit,
+            Stopwatch stopwatch,
+            TabuSearchStatistics statistics)
+        {
+            /*
+            Diese Methode entscheidet, welche Moves exakt bewertet werden.
+
+            Im Standardmodus wird zuerst die schnelle Move-Abschätzung verwendet.
+            Für die neue Evaluation kann diese Abschätzung vollständig deaktiviert
+            werden. Dadurch kann untersucht werden, ob die Abschätzung gute Moves
+            zuverlässig auswählt oder ob sie gute Kandidaten zu früh aussortiert.
+            */
+            if (settings.MoveSelectionMode == MoveSelectionMode.EstimatedTopCandidates)
+            {
+                List<MoveCandidate> estimatedMoves =
+                    EstimateMoves(
+                        instance,
+                        currentOrders,
+                        analysisResult,
+                        moves,
+                        tabuList,
+                        iterationsSinceImprovement,
+                        useTimeLimit,
+                        stopwatch,
+                        statistics);
+
+                return estimatedMoves
+                    .OrderBy(candidate => candidate.EstimatedEvaluationValue)
+                    .Take(Math.Min(
+                        settings.MaxExactEvaluationsPerIteration,
+                        estimatedMoves.Count))
+                    .Select(candidate => candidate.Move)
+                    .ToList();
+            }
+
+            if (settings.MoveSelectionMode == MoveSelectionMode.NoEstimationAllExact)
+            {
+                /*
+                In dieser Variante wird keine schnelle Abschätzung verwendet.
+
+                Alle generierten Moves werden an die exakte Bewertung weitergegeben.
+                Die Laufzeit kann dadurch deutlich steigen. Das Zeitlimit wird jedoch
+                weiterhin in SelectBestMove geprüft.
+                */
+                return moves.ToList();
+            }
+
+            if (settings.MoveSelectionMode == MoveSelectionMode.NoEstimationRandomCandidates)
+            {
+                /*
+                In dieser Variante wird ebenfalls keine schnelle Abschätzung verwendet.
+
+                Stattdessen wird eine zufällige Teilmenge der Moves exakt bewertet.
+                Damit kann geprüft werden, ob die schnelle Abschätzung besser ist als
+                eine einfache zufällige Kandidatenauswahl.
+                */
+                int selectionCount =
+                    Math.Min(
+                        settings.MaxExactEvaluationsPerIteration,
+                        moves.Count);
+
+                if (selectionCount <= 0)
+                {
+                    return new List<Move>();
+                }
+
+                List<Move> shuffledMoves =
+                    moves.ToList();
+
+                for (int i = 0; i < selectionCount; i++)
+                {
+                    int randomIndex =
+                        randomMoveSelector.Next(
+                            i,
+                            shuffledMoves.Count);
+
+                    Move temp =
+                        shuffledMoves[i];
+
+                    shuffledMoves[i] =
+                        shuffledMoves[randomIndex];
+
+                    shuffledMoves[randomIndex] =
+                        temp;
+                }
+
+                return shuffledMoves
+                    .Take(selectionCount)
+                    .ToList();
+            }
+
+            throw new InvalidOperationException(
+                "Unknown move selection mode: " +
+                settings.MoveSelectionMode);
         }
 
         private MoveSelectionResult SelectBestMove(

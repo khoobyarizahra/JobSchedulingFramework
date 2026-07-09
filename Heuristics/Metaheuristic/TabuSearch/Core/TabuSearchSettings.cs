@@ -24,16 +24,40 @@
         public int ExtendedModeSafetyTimeLimitSeconds { get; set; } = 300;
 
         /*
+        Steuerung der Move-Auswahl.
+
+        Die bisherige Baseline verwendet EstimatedTopCandidates:
+        Alle Moves werden schnell abgeschätzt und anschließend werden nur die
+        besten Kandidaten exakt bewertet.
+
+        Für die Evaluation kann die Abschätzung vollständig deaktiviert werden.
+        Dadurch kann untersucht werden, ob die Schätzung gute Moves zuverlässig
+        erkennt oder ob sie gute Kandidaten zu früh aussortiert.
+        */
+        public MoveSelectionMode MoveSelectionMode { get; set; } =
+            MoveSelectionMode.EstimatedTopCandidates;
+
+        /*
         Anzahl der Moves, die pro Iteration exakt bewertet werden.
 
-        Die Nachbarschaft kann sehr viele Moves erzeugen. Deshalb werden zuerst
-        alle Moves schnell abgeschätzt. Anschließend werden nur die besten Kandidaten
-        exakt geprüft, indem der Schedule wirklich neu berechnet wird.
+        Bei EstimatedTopCandidates werden nach der schnellen Abschätzung nur die
+        besten Kandidaten exakt geprüft.
 
-        Ein kleiner Wert spart Laufzeit, kann aber gute Moves übersehen.
-        Ein großer Wert verbessert die Move-Auswahl, erhöht aber die Laufzeit.
+        Bei NoEstimationRandomCandidates wird diese Anzahl für die zufällige
+        Kandidatenauswahl verwendet.
+
+        Bei NoEstimationAllExact wird dieser Wert ignoriert, weil alle generierten
+        Moves exakt bewertet werden.
         */
         public int MaxExactEvaluationsPerIteration { get; set; } = 20;
+
+        /*
+        Seed für die zufällige Move-Auswahl ohne Abschätzung.
+
+        Der feste Seed macht die Evaluation reproduzierbar. Dadurch kann ein Lauf
+        mit gleicher Konfiguration erneut ausgeführt und besser verglichen werden.
+        */
+        public int RandomMoveSelectionSeed { get; set; } = 321;
 
         /*
         Parameter der Restart-Strategie.
