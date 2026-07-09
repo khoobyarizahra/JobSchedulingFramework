@@ -1,21 +1,17 @@
 ﻿using JobShopSchedulingFramework.Models;
 using System;
 using System.Collections.Generic;
-using System.Text;
-
-/*
-INITIAL HEURISTIC (Giffler-Thompson)
-Kern des Algorithmus:
-- konstruiert einen aktiven Schedule
-- nutzt Prioritätsregeln zur Konfliktauflösung
-*/
+using System.Linq;
 
 namespace JobShopSchedulingFramework.Heuristics.Initial
 {
-
+    /*
+    Erstellt eine zulässige Startlösung mit der Giffler-Thompson-Heuristik.
+    Die Auswahl innerhalb einer Konfliktmenge erfolgt über eine Prioritätsregel.
+    */
     public class GifflerThompsonHeuristic
     {
-        // Random mit Seed → reproduzierbare Ergebnisse!
+        // Fester Seed für reproduzierbare Zufallsergebnisse.
         private static Random random = new Random(42);
 
         public static void SetRandomSeed(int seed)
@@ -23,9 +19,10 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
             random = new Random(seed);
         }
 
-
-        //Berechnet Remaining Processing Time (LRPT)
-
+        /*
+        Berechnet für jede Operation die verbleibende Bearbeitungszeit bis zum Jobende.
+        Dieser Wert wird von LRPT, SRPT und SetupAwareLRPT verwendet.
+        */
         public static void CalculateRemainingProcessingTimes(Instance instance)
         {
             foreach (Job job in instance.Jobs)
@@ -35,13 +32,15 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
                 for (int i = job.Operations.Count - 1; i >= 0; i--)
                 {
                     sum += job.Operations[i].ProcessingTime;
-                    job.Operations[i].remainingProcessingTime = sum;
+                    job.Operations[i].RemainingProcessingTime = sum;
                 }
             }
         }
 
-        //Setup-Zeit bestimmen: abhängig vom vorherigen Job auf dieser Maschine
-        private static int GetSetupTime(Instance instance, int[] lastJobOnMachine, Operation op)
+        private static int GetSetupTime(
+            Instance instance,
+            int[] lastJobOnMachine,
+            Operation op)
         {
             int previousJob = lastJobOnMachine[op.Machine];
 
@@ -52,9 +51,9 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
         }
 
         /*
-         PRIORITY RULE SELECTION
-         Entscheidet, welche Operation aus der Konfliktmenge gewählt wird.
-         */
+        Wählt aus der Konfliktmenge die nächste Operation entsprechend der
+        gewählten Prioritätsregel aus.
+        */
         private static Operation SelectByPriorityRule(
             List<Operation> conflictSet,
             PriorityRule rule,
@@ -63,47 +62,55 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
         {
             if (rule == PriorityRule.LRPT)
             {
-                return conflictSet.OrderByDescending(op => op.remainingProcessingTime).First();
+                return conflictSet
+                    .OrderByDescending(op => op.RemainingProcessingTime)
+                    .First();
             }
 
             if (rule == PriorityRule.LPT)
             {
-                return conflictSet.OrderByDescending(op => op.ProcessingTime).First();
+                return conflictSet
+                    .OrderByDescending(op => op.ProcessingTime)
+                    .First();
             }
 
             if (rule == PriorityRule.SPT)
             {
-                return conflictSet.OrderBy(op => op.ProcessingTime).First();
+                return conflictSet
+                    .OrderBy(op => op.ProcessingTime)
+                    .First();
             }
 
             if (rule == PriorityRule.SRPT)
             {
-                return conflictSet.OrderBy(op => op.remainingProcessingTime).First();
+                return conflictSet
+                    .OrderBy(op => op.RemainingProcessingTime)
+                    .First();
             }
 
-            /*
-             Setup-aware Erweiterung:
-             Berücksichtigt Rüstzeit direkt in der Entscheidung
-             */
             if (rule == PriorityRule.SetupAwareLRPT)
             {
                 return conflictSet
                     .OrderByDescending(op =>
                     {
                         int setup = GetSetupTime(instance, lastJobOnMachine, op);
-                        return op.remainingProcessingTime - setup;
+                        return op.RemainingProcessingTime - setup;
                     })
                     .First();
             }
 
-            // Random Auswahl (Seed sorgt für Reproduzierbarkeit)
             int index = random.Next(conflictSet.Count);
             return conflictSet[index];
         }
-
-        //Giffler-Thompson Algorithmus
+        /*
+        Erzeugt mit der Giffler-Thompson-Heuristik einen zulässigen Startplan.
+        Die angegebene Prioritätsregel entscheidet bei Maschinenkonflikten,
+        welche Operation als nächste eingeplant wird.
+        */
         public static void CreateInitialSchedule(Instance instance, PriorityRule rule)
         {
+            CalculateRemainingProcessingTimes(instance);
+
             int[] nextOperationReadyTime = new int[instance.NumJobs + 1];
             int[] machineReadyTime = new int[instance.NumMachines + 1];
             int[] lastJobOnMachine = new int[instance.NumMachines + 1];
@@ -121,9 +128,9 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
                 int selectedMachine = -1;
 
                 /*
-                  Schritt 1:
-                  Finde früheste Fertigstellungszeit C*
-                 */
+                Bestimmt die früheste mögliche Fertigstellungszeit aller aktuell
+                verfügbaren Operationen.
+                */
                 foreach (Job job in instance.Jobs)
                 {
                     if (nextOperation[job.JobID] <= job.Operations.Count)
@@ -134,8 +141,7 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
 
                         int start = Math.Max(
                             nextOperationReadyTime[op.JobID],
-                            machineReadyTime[op.Machine] + setup
-                        );
+                            machineReadyTime[op.Machine] + setup);
 
                         int completion = start + op.ProcessingTime;
 
@@ -148,9 +154,9 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
                 }
 
                 /*
-                 Schritt 2:
-                 Konfliktmenge bilden
-                 */
+                Bildet die Konfliktmenge auf der ausgewählten Maschine.
+                Betrachtet werden Operationen, die vor cStar starten könnten.
+                */
                 List<Operation> conflictSet = new List<Operation>();
 
                 foreach (Job job in instance.Jobs)
@@ -163,27 +169,27 @@ namespace JobShopSchedulingFramework.Heuristics.Initial
 
                         int start = Math.Max(
                             nextOperationReadyTime[op.JobID],
-                            machineReadyTime[op.Machine] + setup
-                        );
+                            machineReadyTime[op.Machine] + setup);
 
                         if (op.Machine == selectedMachine && start < cStar)
                             conflictSet.Add(op);
                     }
                 }
 
-                /*
-                 Schritt 3:
-                 Prioritätsregel anwenden
-                 */
                 Operation selected = SelectByPriorityRule(
-                    conflictSet, rule, instance, lastJobOnMachine);
+                    conflictSet,
+                    rule,
+                    instance,
+                    lastJobOnMachine);
 
-                int setupSelected = GetSetupTime(instance, lastJobOnMachine, selected);
+                int setupSelected = GetSetupTime(
+                    instance,
+                    lastJobOnMachine,
+                    selected);
 
                 int startTime = Math.Max(
                     nextOperationReadyTime[selected.JobID],
-                    machineReadyTime[selected.Machine] + setupSelected
-                );
+                    machineReadyTime[selected.Machine] + setupSelected);
 
                 int endTime = startTime + selected.ProcessingTime;
 

@@ -1,21 +1,30 @@
 ﻿namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 {
+    /*
+    Repräsentiert einen Move innerhalb der Tabu Search.
+
+    Ein Move beschreibt eine Änderung der Reihenfolge auf einer Maschine.
+    Standardmäßig handelt es sich um einen Swap-Move zwischen zwei Operationen.
+    Über IsInsertMove kann derselbe Datentyp auch für Insert-Moves verwendet werden.
+    */
     public class Move
     {
-        //Diese Klasse repräsentiert einen Move, der in einem Tabu Search Algorithmus verwendet wird.
-        //Ein Move beschreibt eine Änderung an der aktuellen Lösung, die durch den Austausch von Operationen auf einer Maschine erreicht wird.
-        //Die Klasse enthält Informationen über die betroffene Maschine, die Indizes der Operationen auf dieser Maschine sowie die beteiligten Jobs und Operationen.
-        //Sie bietet auch Methoden zur Generierung von Schlüsseln für die Identifikation von Moves und eine ToString-Methode für die lesbare Darstellung des Moves.
+        // Maschine, auf der der Move ausgeführt wird.
         public int Machine { get; set; }
-        //MachineIndex1 und MachineIndex2 geben die Positionen der Operationen auf der betroffenen Maschine an, die ausgetauscht werden sollen.
+
+        // Positionen der betroffenen Operationen in der Maschinenreihenfolge.
         public int MachineIndex1 { get; set; }
         public int MachineIndex2 { get; set; }
-        //FirstJob, FirstOperation, SecondJob und SecondOperation geben die spezifischen Jobs und Operationen an, die in diesem Move involviert sind.
+
+        // Erste beteiligte Operation.
         public int FirstJob { get; set; }
         public int FirstOperation { get; set; }
 
+        // Zweite beteiligte Operation beziehungsweise Zieloperation bei Insert-Moves.
         public int SecondJob { get; set; }
         public int SecondOperation { get; set; }
+
+        // Kennzeichnet, ob dieser Move als Insert statt als Swap interpretiert wird.
         public bool IsInsertMove { get; set; }
 
         public Move(
@@ -36,9 +45,16 @@
 
             this.SecondJob = job2;
             this.SecondOperation = operation2;
+
             this.IsInsertMove = false;
         }
-        //Die GetKey-Methode generiert einen eindeutigen Schlüssel für diesen Move, der auf der Maschine und den beteiligten Jobs und Operationen basiert.
+
+        /*
+        Erzeugt einen Schlüssel für diesen Move.
+
+        Der Schlüssel wird unter anderem für die Tabu-Liste und zur Erkennung
+        doppelter Moves verwendet.
+        */
         public string GetKey()
         {
             return
@@ -46,8 +62,13 @@
                 "_J" + FirstJob + "O" + FirstOperation +
                 "_J" + SecondJob + "O" + SecondOperation;
         }
-        //Die GetReverseKey-Methode generiert einen Schlüssel für den umgekehrten Move, bei dem die Positionen der Jobs und Operationen vertauscht sind.
-        //Dies ist nützlich, um zu überprüfen, ob ein Move bereits tabu ist, wenn er in umgekehrter Form auftritt.
+
+        /*
+        Erzeugt den Schlüssel für die umgekehrte Swap-Richtung.
+
+        Dadurch kann ein Swap zwischen A und B auch dann erkannt werden,
+        wenn er als B und A erzeugt wurde.
+        */
         public string GetReverseKey()
         {
             return

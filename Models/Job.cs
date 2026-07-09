@@ -1,16 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-//Eine Operation gehört zu genau einem Job und wird auf genau einer Maschine ausgeführt.
-//Ein Job besteht aus einer festen Reihenfolge von Operationen.
-
+﻿using System.Collections.Generic;
 
 namespace JobShopSchedulingFramework.Models
 {
+    /*
+    Repräsentiert einen Job mit seiner festen Operationsreihenfolge.
+    Diese Reihenfolge bildet die Vorrangbedingungen innerhalb des Jobs ab.
+    */
     public class Job
     {
         public int JobID { get; }
+
+        // Operationen des Jobs in der vorgegebenen Bearbeitungsreihenfolge.
         public List<Operation> Operations { get; set; }
 
         public Job(int jobID)
@@ -19,5 +19,4 @@ namespace JobShopSchedulingFramework.Models
             this.Operations = new List<Operation>();
         }
     }
-
 }

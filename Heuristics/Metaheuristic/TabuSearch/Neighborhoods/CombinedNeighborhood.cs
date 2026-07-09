@@ -1,19 +1,17 @@
 ﻿using JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Criticality;
 using JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core;
 using JobShopSchedulingFramework.Models;
+using System.Collections.Generic;
 
 namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighborhoods
 {
-    /// <summary>
-    /// Combined neighborhood for the final Tabu Search.
-    /// 
-    /// This neighborhood combines two move types:
-    /// 1. All-pair swaps inside critical blocks
-    /// 2. Insert moves for critical operations
-    /// 
-    /// The goal is to allow both direct reordering by swaps
-    /// and larger positional changes by insert moves.
-    /// </summary>
+    /*
+    Kombiniert mehrere Nachbarschaften für die finale Tabu Search.
+
+    Verwendet werden All-Pair-Swaps innerhalb kritischer Blöcke und Insert-Moves
+    für kritische Operationen. Dadurch kann die Suche sowohl lokale Vertauschungen
+    als auch größere Positionsänderungen berücksichtigen.
+    */
     public class CombinedNeighborhood : INeighborhoodDefinition
     {
         private readonly AllPairSwapNeighborhood allPairSwapNeighborhood;
@@ -36,6 +34,10 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
             List<Move> combinedMoves =
                 new List<Move>();
 
+            /*
+            Speichert eindeutige Move-Schlüssel, damit identische Moves aus
+            verschiedenen Nachbarschaften nicht mehrfach bewertet werden.
+            */
             HashSet<string> generatedMoveKeys =
                 new HashSet<string>();
 
@@ -64,6 +66,10 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
             return combinedMoves;
         }
 
+        /*
+        Fügt nur Moves hinzu, die bisher noch nicht in der kombinierten
+        Nachbarschaft enthalten sind.
+        */
         private static void AddUniqueMoves(
             List<Move> combinedMoves,
             HashSet<string> generatedMoveKeys,
@@ -83,6 +89,12 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
             }
         }
 
+        /*
+        Erzeugt einen eindeutigen Schlüssel für einen Move.
+
+        Der Move-Typ wird bewusst mit aufgenommen, weil ein Swap und ein Insert
+        mit ähnlichen Indizes unterschiedliche Bewegungen darstellen können.
+        */
         private static string CreateMoveKey(
             Move move)
         {

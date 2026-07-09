@@ -1,8 +1,17 @@
 ﻿using JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Criticality;
 using JobShopSchedulingFramework.Models;
+using System;
+using System.Collections.Generic;
 
 namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 {
+    /*
+    Führt eine schnelle Vorbewertung von Moves durch.
+
+    Statt für jeden Move sofort den kompletten Schedule neu zu berechnen,
+    wird hier mit den r_i- und q_i-Werten aus der kritischen Analyse eine
+    Schätzung des möglichen Makespan-Beitrags vorgenommen.
+    */
     public static class MoveFastEvaluator
     {
         public static int EstimateSwapCmax(
@@ -21,16 +30,16 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                 machineSequence[move.MachineIndex2];
 
             int rA =
-                analysisResult.releaseTimes[a];
+                analysisResult.ReleaseTimes[a];
 
             int rB =
-                analysisResult.releaseTimes[b];
+                analysisResult.ReleaseTimes[b];
 
             int qA =
-                analysisResult.tails[a];
+                analysisResult.Tails[a];
 
             int qB =
-                analysisResult.tails[b];
+                analysisResult.Tails[b];
 
             int setupAB =
                 GetSetupTime(instance, a, b);
@@ -38,12 +47,27 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             int setupBA =
                 GetSetupTime(instance, b, a);
 
+            /*
+            Schätzung für den Fall, dass Operation a nach Operation b liegt.
+
+            rB beschreibt, wann b frühestens starten kann. Danach folgen die
+            Bearbeitungszeit von b, die Setup-Zeit von b nach a und der Restpfad
+            ab a.
+            */
             int estimatedAAfterB =
                 rB + b.ProcessingTime + setupBA + qA;
 
+            /*
+            Schätzung für den umgekehrten Zusammenhang:
+            Operation b liegt nach Operation a.
+            */
             int estimatedBAfterA =
                 rA + a.ProcessingTime + setupAB + qB;
 
+            /*
+            Der größere der beiden geschätzten Pfadbeiträge ist relevant,
+            weil der Makespan durch den längsten Pfad bestimmt wird.
+            */
             return Math.Max(
                 estimatedAAfterB,
                 estimatedBAfterA);
@@ -69,6 +93,11 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 
             double penaltyRate;
 
+            /*
+            Die Strafrate steigt, wenn über längere Zeit keine Verbesserung
+            gefunden wurde. Dadurch werden häufig wiederholte Moves stärker
+            bestraft und die Suche wird stärker diversifiziert.
+            */
             if (iterationsSinceImprovement < 300)
             {
                 penaltyRate = 0.005;

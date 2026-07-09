@@ -1,21 +1,19 @@
 ﻿using JobShopSchedulingFramework.Models;
-using System;
-using System.Collections.Generic;
 
 namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 {
-    // Helper class for calculating the earliest feasible start time of an operation.
+    /*
+    Berechnet die früheste zulässige Startzeit einer Operation.
+    Berücksichtigt werden Job-Vorgänger, Maschinen-Vorgänger und Setup-Zeiten.
+    */
     public static class EarliestStartCalculator
     {
-        // Calculates the earliest start time of an operation based on
-        // the predecessor in the same job and the predecessor on the same machine.
         public static int Calculate(
             Instance instance,
             Dictionary<int, List<Operation>> machineOrders,
             Operation operation)
         {
-            int earliestStart =
-                0;
+            int earliestStart = 0;
 
             Operation? jobPredecessor =
                 OperationPredecessorFinder.GetJobPredecessor(
@@ -24,6 +22,7 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 
             if (jobPredecessor != null)
             {
+                // Die Operation darf erst nach ihrem Vorgänger im selben Job starten.
                 earliestStart =
                     Math.Max(
                         earliestStart,
@@ -42,6 +41,7 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         machinePredecessor.JobID - 1,
                         operation.JobID - 1];
 
+                // Auf derselben Maschine muss zusätzlich die Setup-Zeit berücksichtigt werden.
                 earliestStart =
                     Math.Max(
                         earliestStart,

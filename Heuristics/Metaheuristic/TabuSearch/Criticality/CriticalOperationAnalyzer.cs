@@ -6,31 +6,12 @@ using System.Linq;
 namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Criticality
 {
     /*
-     CRITICAL OPERATION ANALYZER
+    Analysiert einen aktuellen Schedule und bestimmt die kritischen Operationen.
 
-     Diese Klasse berechnet kritische Operationen direkt nach der Logik aus dem Artikel.
-
-     Wichtig:
-     Es wird KEIN kritischer Pfad rekonstruiert.
-     Es wird auch KEIN allgemeiner Graph mit topologischer Sortierung aufgebaut.
-
-     Stattdessen wird direkt mit den vier Nachbarschaftsbeziehungen gearbeitet:
-
-     PJ_i = Vorgängeroperation desselben Jobs
-     PM_i = Vorgängeroperation auf derselben Maschine
-     SJ_i = Nachfolgeroperation desselben Jobs
-     SM_i = Nachfolgeroperation auf derselben Maschine
-
-     Danach gilt:
-
-     r_i = frühestmöglicher Startzeitpunkt von Operation i
-
-     q_i = Länge des längsten Restpfades ab Operation i
-           inklusive Bearbeitungszeit von Operation i selbst
-
-     Operation i ist kritisch genau dann, wenn:
-
-     r_i + q_i == Cmax
+    Eine Operation gilt als kritisch, wenn ihr frühester Start r_i zusammen mit
+    dem längsten Restpfad q_i genau den aktuellen Makespan Cmax ergibt.
+    Diese Operationen bilden die Grundlage für kritische Blöcke und gezielte
+    Nachbarschaften in der Tabu Search.
     */
     public static class CriticalOperationAnalyzer
     {
@@ -38,49 +19,62 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
             Instance instance,
             Dictionary<int, List<Operation>> machineOrders)
         {
-            // Alle Operationen in einer Liste sammeln
+            // Alle Operationen werden gemeinsam analysiert, unabhängig von Job oder Maschine.
             List<Operation> allOperations =
                 instance.Jobs
                 .SelectMany(job => job.Operations)
                 .ToList();
-            //JobPredecessor als Dictionary aufbauen, damit wir schnell auf Job-Vorgänger zugreifen können
+
+            /*
+            Für jede Operation werden die direkten Beziehungen bestimmt.
+            Job-Beziehungen ergeben sich aus der festen Operationsreihenfolge eines Jobs.
+            Maschinen-Beziehungen ergeben sich aus der aktuellen Maschinenreihenfolge.
+            */
             Dictionary<Operation, Operation?> jobPredecessor =
                 BuildJobPredecessors(instance);
-            //JobSuccessor als Dictionary aufbauen, damit wir schnell auf Job-Nachfolger zugreifen können
+
             Dictionary<Operation, Operation?> jobSuccessor =
                 BuildJobSuccessors(instance);
-            //MachinePredecessor als Dictionary aufbauen, damit wir schnell auf Maschinen-Vorgänger zugreifen können
+
             Dictionary<Operation, Operation?> machinePredecessor =
                 BuildMachinePredecessors(machineOrders);
-            //MachineSuccessor als Dictionary aufbauen, damit wir schnell auf Maschinen-Nachfolger zugreifen können
+
             Dictionary<Operation, Operation?> machineSuccessor =
                 BuildMachineSuccessors(machineOrders);
-            // Alle r_i-Werte berechnen und in einem Dictionary speichern, als key verwenden wir die Operation
+
+            // r_i: frühestmöglicher Startzeitpunkt jeder Operation.
             Dictionary<Operation, int> releaseDates =
                 CalculateReleaseDates(
                     allOperations,
                     jobPredecessor,
                     machinePredecessor,
                     instance);
-            // Alle q_i-Werte berechnen und in einem Dictionary speichern, als key verwenden wir die Operation
+
+            // q_i: längster verbleibender Restpfad ab der Operation inklusive eigener Bearbeitungszeit.
             Dictionary<Operation, int> tails =
                 CalculateTails(
                     allOperations,
                     jobSuccessor,
                     machineSuccessor,
                     instance);
-            // Cmax berechnen, als Maximum über alle Operationen von r_i + q_i
+
+            /*
+            Der Makespan ergibt sich als längster Gesamtpfad.
+            Für jede Operation beschreibt r_i + q_i einen vollständigen Pfadanteil
+            durch diese Operation.
+            */
             int cmax =
                 allOperations.Max(operation =>
                     releaseDates[operation] + tails[operation]);
-            //result-Objekt erstellen und mit den berechneten Werten füllen
+
             CriticalOperationAnalysisResult result =
                 new CriticalOperationAnalysisResult();
 
             result.releaseTimes = releaseDates;
             result.tails = tails;
             result.cmax = cmax;
-            //wir iterieren über alle Operationen und fügen diejenigen zur Menge der kritischen Operationen hinzu, für die r_i + q_i == Cmax gilt
+
+            // Kritisch sind genau die Operationen, die auf einem Cmax-bestimmenden Pfad liegen.
             foreach (Operation operation in allOperations)
             {
                 int r = releaseDates[operation];
@@ -92,35 +86,25 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
                 }
             }
 
-
             return result;
         }
 
         /*
-         Baut PJ_i.
-
-         PJ_i ist die direkte Vorgängeroperation im selben Job.
-
-         Beispiel:
-         Job 1: O1 -> O2 -> O3
-
-         PJ(O1) = null
-         PJ(O2) = O1
-         PJ(O3) = O2
+        Bestimmt für jede Operation den direkten Vorgänger im selben Job.
+        Diese Beziehung entspricht der technologischen Reihenfolge des Jobs.
         */
-
         private static Dictionary<Operation, Operation?> BuildJobPredecessors(
             Instance instance)
         {
             Dictionary<Operation, Operation?> predecessors =
                 new Dictionary<Operation, Operation?>();
-            // Wir iterieren über alle Jobs und deren Operationen, um die Vorgängerbeziehung zu bestimmen
+
             foreach (Job job in instance.Jobs)
             {
                 for (int i = 0; i < job.Operations.Count; i++)
                 {
                     Operation operation = job.Operations[i];
-                    // Wenn es die erste Operation im Job ist, hat sie keinen Vorgänger, sonst ist der Vorgänger die vorherige Operation im Job
+
                     if (i == 0)
                     {
                         predecessors[operation] = null;
@@ -136,16 +120,15 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
         }
 
         /*
-         Baut SJ_i.
-
-         SJ_i ist die direkte Nachfolgeroperation im selben Job.
+        Bestimmt für jede Operation den direkten Nachfolger im selben Job.
+        Diese Beziehung wird für die Berechnung des Restpfads q_i benötigt.
         */
         private static Dictionary<Operation, Operation?> BuildJobSuccessors(
             Instance instance)
         {
             Dictionary<Operation, Operation?> successors =
                 new Dictionary<Operation, Operation?>();
-            // Wir iterieren über alle Jobs in Instance und deren Operationen, um die Nachfolgerbeziehung zu bestimmen
+
             foreach (Job job in instance.Jobs)
             {
                 for (int i = 0; i < job.Operations.Count; i++)
@@ -167,18 +150,8 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
         }
 
         /*
-         Baut PM_i.
-
-         PM_i ist die direkte Vorgängeroperation auf derselben Maschine.
-
-         Die Reihenfolge kommt aus machineOrders.
-
-         Beispiel:
-         Maschine 2: A -> B -> C
-
-         PM(A) = null
-         PM(B) = A
-         PM(C) = B
+        Bestimmt für jede Operation den direkten Vorgänger auf derselben Maschine.
+        Die Reihenfolge stammt aus dem aktuellen Schedule bzw. aus einem Tabu-Move.
         */
         private static Dictionary<Operation, Operation?> BuildMachinePredecessors(
             Dictionary<int, List<Operation>> machineOrders)
@@ -186,7 +159,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
             Dictionary<Operation, Operation?> predecessors =
                 new Dictionary<Operation, Operation?>();
 
-            //wir iterieren über alle Maschinen und deren Operationen, um die Vorgängerbeziehung zu bestimmen
             foreach (var pair in machineOrders)
             {
                 List<Operation> operationsOnMachine = pair.Value;
@@ -210,16 +182,15 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
         }
 
         /*
-         Baut SM_i.
-
-         SM_i ist die direkte Nachfolgeroperation auf derselben Maschine.
+        Bestimmt für jede Operation den direkten Nachfolger auf derselben Maschine.
+        Diese Beziehung zeigt, welche Operation auf derselben Maschine danach folgt.
         */
         private static Dictionary<Operation, Operation?> BuildMachineSuccessors(
             Dictionary<int, List<Operation>> machineOrders)
         {
             Dictionary<Operation, Operation?> successors =
                 new Dictionary<Operation, Operation?>();
-            //wir iterieren über alle Maschinen und deren Operationen, um die Nachfolgerbeziehung zu bestimmen
+
             foreach (var pair in machineOrders)
             {
                 List<Operation> operationsOnMachine = pair.Value;
@@ -243,19 +214,12 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
         }
 
         /*
-         Berechnet alle r_i-Werte.
+        Berechnet r_i für alle Operationen.
 
-         Artikel-Logik:
-
-         r_i = max(
-             r_PJ_i + p_PJ_i,
-             r_PM_i + p_PM_i + setup(PM_i, i)
-         )
-
-         Falls es keinen Vorgänger gibt, wird der entsprechende Wert als 0 betrachtet.
-
-         Wir verwenden eine Bellman-artige Iteration:
-         Die Werte werden wiederholt aktualisiert, bis sich nichts mehr ändert.
+        r_i ist der frühestmögliche Startzeitpunkt einer Operation.
+        Eine Operation kann erst starten, wenn sowohl ihr Job-Vorgänger als auch
+        ihr Maschinen-Vorgänger abgeschlossen sind. Bei Maschinen-Vorgängern wird
+        zusätzlich die reihenfolgeabhängige Setup-Zeit berücksichtigt.
         */
         private static Dictionary<Operation, int> CalculateReleaseDates(
             List<Operation> allOperations,
@@ -263,28 +227,22 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
             Dictionary<Operation, Operation?> machinePredecessor,
             Instance instance)
         {
-            // Alle r_i-Werte initial auf 0 setzen
             Dictionary<Operation, int> r =
                 allOperations.ToDictionary(
                     operation => operation,
                     operation => 0);
-            //changed-Flag, um zu überprüfen, ob sich in einer Iteration etwas geändert hat
-            //Mit Änderungen meinen wir, dass mindestens ein r_i-Wert aktualisiert wurde, weil er einen größeren Wert angenommen hat,
-            //was bedeutet,deren Nachfolger möglicherweise auch aktualisiert werden müssen
-            bool changed = true;
-            //maxIterations, um eine Endlosschleife zu verhindern,
-            //falls die Werte nicht konvergieren (z.B. wegen eines Zyklus in der Maschinenreihenfolge)
-            //allOperations.Count * allOperations.Count ist eine konservative Schätzung,
-            //da im schlimmsten Fall jeder r_i-Wert von jedem anderen r_i-Wert abhängen könnte
-            int maxIterations =
-                allOperations.Count * allOperations.Count;
 
+            bool changed = true;
+            int maxIterations = allOperations.Count * allOperations.Count;
             int iteration = 0;
 
+            /*
+            Die Werte werden iterativ erhöht, bis sie stabil sind.
+            Dadurch können Abhängigkeiten berücksichtigt werden, auch wenn die
+            Operationen nicht bereits in topologischer Reihenfolge vorliegen.
+            */
             while (changed)
             {
-                //zuerst setzen wir das changed-Flag auf false, und wenn wir in der Iteration feststellen,
-                //dass sich ein r_i-Wert ändert, setzen wir es wieder auf true
                 changed = false;
                 iteration++;
 
@@ -293,28 +251,25 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
                     throw new InvalidOperationException(
                         "Die r_i-Werte konvergieren nicht. Wahrscheinlich enthält die Maschinenreihenfolge einen Zyklus.");
                 }
-                // Wir iterieren über alle Operationen und berechnen die neuen r_i-Werte basierend auf den Vorgängerbeziehungen
+
                 foreach (Operation operation in allOperations)
                 {
-                    //candidateFromJob berechnet den Wert von Job-Vorgänger, candidateFromMachine berechnet den Wert von Maschinen-Vorgänger
                     int candidateFromJob = 0;
                     int candidateFromMachine = 0;
-                    // Wir schauen uns den Job-Vorgänger an, falls vorhanden, und berechnen den Beitrag zum r_i-Wert
-                    //? Operator wird verwendet, um zu überprüfen, ob es einen Vorgänger gibt. Wenn ja,
-                    //wird der Wert berechnet, sonst bleibt er 0
+
                     Operation? pj =
                         jobPredecessor[operation];
 
                     if (pj != null)
                     {
-                        // Wenn es einen Job-Vorgänger gibt, berechnen wir den Beitrag zum r_i-Wert
+                        // Start frühestens nach Abschluss der vorherigen Operation im selben Job.
                         candidateFromJob =
                             r[pj] + pj.ProcessingTime;
                     }
-                    // Wir schauen uns den Maschinen-Vorgänger an, falls vorhanden, und berechnen den Beitrag zum r_i-Wert inklusive Rüstzeit
+
                     Operation? pm =
                         machinePredecessor[operation];
-                    // Wenn es einen Maschinen-Vorgänger gibt, berechnen wir den Beitrag zum r_i-Wert inklusive Rüstzeit
+
                     if (pm != null)
                     {
                         int setup =
@@ -323,25 +278,23 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
                                 pm,
                                 operation);
 
+                        // Start frühestens nach Maschinen-Vorgänger plus Setup-Zeit.
                         candidateFromMachine =
                             r[pm] + pm.ProcessingTime + setup;
                     }
-                    // Der neue r_i-Wert ist das Maximum aus beiden Beiträgen
-                    //weil die Operation erst starten kann, wenn sowohl der Job-Vorgänger als auch der Maschinen-Vorgänger fertig sind
+
+                    /*
+                    Beide Bedingungen müssen erfüllt sein.
+                    Deshalb bestimmt das Maximum den frühestmöglichen Start.
+                    */
                     int newR =
                         Math.Max(
                             candidateFromJob,
                             candidateFromMachine);
-                    // Wenn der neue r_i-Wert größer ist als der bisherige,
-                    // aktualisieren wir ihn und setzen das changed-Flag auf true, damit die Iteration fortgesetzt wird
-                    //weil sich durch die Aktualisierung eines r_i-Werts auch die r_i-Werte der Nachfolger ändern können,
-                    //müssen wir so lange iterieren, bis sich nichts mehr ändert
-                    //also endet die Iteration, wenn alle r_i-Werte stabil sind und sich nicht mehr ändern
+
                     if (newR > r[operation])
                     {
-                        //wenn der neue r_i-Wert größer ist, aktualisieren wir ihn im Dictionary
                         r[operation] = newR;
-                        //und setzen das changed-Flag auf true, damit die Iteration fortgesetzt wird
                         changed = true;
                     }
                 }
@@ -351,20 +304,11 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
         }
 
         /*
-         Berechnet alle q_i-Werte.
+        Berechnet q_i für alle Operationen.
 
-         Artikel-Logik mit q inklusive eigener Bearbeitungszeit:
-
-         q_i = p_i + max(
-             q_SJ_i,
-             setup(i, SM_i) + q_SM_i
-         )
-
-         Falls es keinen Nachfolger gibt, wird der entsprechende Wert als 0 betrachtet.
-
-         Für letzte Operationen gilt dadurch automatisch:
-
-         q_i = p_i
+        q_i ist der längste Restpfad ab einer Operation inklusive ihrer eigenen
+        Bearbeitungszeit. Dafür werden die möglichen Nachfolger im Job und auf
+        der Maschine betrachtet.
         */
         private static Dictionary<Operation, int> CalculateTails(
             List<Operation> allOperations,
@@ -378,12 +322,13 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
                     operation => operation.ProcessingTime);
 
             bool changed = true;
-
-            int maxIterations =
-                allOperations.Count * allOperations.Count;
-
+            int maxIterations = allOperations.Count * allOperations.Count;
             int iteration = 0;
 
+            /*
+            Die Restpfade werden iterativ nach hinten fortgeschrieben.
+            Der längere Nachfolgerpfad bestimmt, welcher Restpfad für q_i relevant ist.
+            */
             while (changed)
             {
                 changed = false;
@@ -405,6 +350,7 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
 
                     if (sj != null)
                     {
+                        // Restpfad über den nächsten Schritt im selben Job.
                         candidateFromJob =
                             q[sj];
                     }
@@ -420,10 +366,15 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
                                 operation,
                                 sm);
 
+                        // Restpfad über die nächste Operation auf derselben Maschine.
                         candidateFromMachine =
                             setup + q[sm];
                     }
 
+                    /*
+                    q_i enthält die eigene Bearbeitungszeit plus den längeren
+                    der beiden möglichen Restpfade.
+                    */
                     int newQ =
                         operation.ProcessingTime +
                         Math.Max(
@@ -442,12 +393,8 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Critica
         }
 
         /*
-         Gibt die reihenfolgeabhängige Rüstzeit zurück.
-
-         Wichtig:
-         SetupTimes ist nach Jobs indexiert.
-
-         Da JobID bei euch bei 1 beginnt, verwenden wir JobID - 1.
+        Gibt die reihenfolgeabhängige Setup-Zeit zwischen zwei Jobs zurück.
+        Da JobIDs bei 1 beginnen, wird für den Matrixzugriff JobID - 1 verwendet.
         */
         private static int GetSetupTime(
             Instance instance,

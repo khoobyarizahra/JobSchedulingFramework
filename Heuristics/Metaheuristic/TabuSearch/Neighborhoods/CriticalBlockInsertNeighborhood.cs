@@ -1,9 +1,18 @@
 ﻿using JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Criticality;
 using JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core;
 using JobShopSchedulingFramework.Models;
+using System.Collections.Generic;
 
 namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighborhoods
 {
+    /*
+    Erzeugt Insert-Moves innerhalb kritischer Blöcke.
+
+    Bei einem Insert-Move wird eine Operation aus ihrer aktuellen Position
+    entfernt und an einer anderen Position im selben kritischen Block eingefügt.
+    Dadurch können stärkere Positionsänderungen erzeugt werden als bei
+    einfachen Swap-Moves.
+    */
     public class CriticalBlockInsertNeighborhood : INeighborhoodDefinition
     {
         public List<Move> GenerateMoves(
@@ -17,10 +26,18 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
             foreach (CriticalBlock block in criticalBlocks)
             {
                 int count =
-                    block.operations.Count;
+                    block.Operations.Count;
 
+                /*
+                Jede Operation im kritischen Block kann als zu verschiebende
+                Operation gewählt werden.
+                */
                 for (int fromIndex = 0; fromIndex < count; fromIndex++)
                 {
+                    /*
+                    Die gewählte Operation kann an jede andere Position im
+                    selben Block eingefügt werden.
+                    */
                     for (int toIndex = 0; toIndex < count; toIndex++)
                     {
                         if (fromIndex == toIndex)
@@ -29,21 +46,27 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
                         }
 
                         Operation movedOperation =
-                            block.operations[fromIndex];
+                            block.Operations[fromIndex];
 
                         Operation targetOperation =
-                            block.operations[toIndex];
+                            block.Operations[toIndex];
 
+                        /*
+                        Die Move-Indizes beziehen sich auf die komplette
+                        Maschinenreihenfolge. Deshalb wird der lokale Index
+                        im Block mit dem Startindex des Blocks verrechnet.
+                        */
                         Move move =
                             new Move(
-                                block.machine,
-                                block.startIndexInMachine + fromIndex,
-                                block.startIndexInMachine + toIndex,
+                                block.Machine,
+                                block.StartIndexInMachine + fromIndex,
+                                block.StartIndexInMachine + toIndex,
                                 movedOperation.JobID,
                                 movedOperation.OperationID,
                                 targetOperation.JobID,
                                 targetOperation.OperationID);
 
+                        // Kennzeichnet diesen Move eindeutig als Insert-Move.
                         move.IsInsertMove = true;
 
                         moves.Add(move);

@@ -1,44 +1,52 @@
-﻿using JobShopSchedulingFramework.Models;
+﻿
+using JobShopSchedulingFramework.Models;
 
 namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
 {
-    // Hilfsklasse zur Berechnung der Start- und Endzeiten der Operationen basierend auf der gegebenen Maschinenreihenfolge und den Job-Abhängigkeiten.
+    /*
+    Berechnet aus einer gegebenen Maschinenreihenfolge die Start- und Endzeiten
+    aller Operationen neu. Dabei werden sowohl Job-Reihenfolgen als auch
+    Maschinen-Reihenfolgen berücksichtigt.
+    */
     public static class ScheduleRecalculator
     {
-        //Die Methode Recalculate berechnet die Start- und Endzeiten der Operationen
-        //basierend auf der gegebenen Maschinenreihenfolge (machineOrders) und den Job-Abhängigkeiten in der Instanz.
-        //Als Parameter erhält sie die Instanz, die Maschinenreihenfolge und gibt die berechnete Cmax zurück.
-        //Die Methode gibt einen booleschen Wert zurück, der angibt, ob die Berechnung erfolgreich war (d.h. ob alle Operationen geplant werden konnten).
+        /*
+        Gibt true zurück, wenn alle Operationen zulässig eingeplant werden konnten.
+        Falls durch die Reihenfolgen ein Zyklus entsteht, können nicht alle
+        Operationen geplant werden und die Methode gibt false zurück.
+        */
         public static bool Recalculate(
             Instance instance,
             Dictionary<int, List<Operation>> machineOrders,
             out int cmax)
         {
-            // Initialisierung von cmax, der die maximale Fertigstellungszeit aller Operationen darstellt.
             cmax = 0;
-            // Alle Operationen aus allen Jobs in der Instanz sammeln.
+
+            // Alle Operationen werden gemeinsam betrachtet, unabhängig von Job oder Maschine.
             List<Operation> allOperations =
                 instance.Jobs.SelectMany(job => job.Operations).ToList();
-            // openPredecessorCount speichert die Anzahl der noch offenen Vorgängeroperationen für jede Operation, bevor sie geplant werden kann.
+            /*
+           Zählt für jede Operation, wie viele Vorgänger noch nicht eingeplant wurden.
+           Vorgänger entstehen aus der Job-Reihenfolge und aus der Maschinenreihenfolge.
+           */
             Dictionary<Operation, int> openPredecessorCount =
                 new Dictionary<Operation, int>();
-            // directSuccessors speichert die direkten Nachfolgeroperationen für jede Operation, basierend auf den Job-Abhängigkeiten und der Maschinenreihenfolge.
+
+            // Speichert die direkten Nachfolger jeder Operation für die spätere Freigabe.
             Dictionary<Operation, List<Operation>> directSuccessors =
                 new Dictionary<Operation, List<Operation>>();
-            // Initialisierung der Datenstrukturen für alle Operationen.
+
             foreach (Operation operation in allOperations)
             {
-                // Alle Operationen haben zu Beginn keine offenen Vorgänger, da wir sie später basierend auf den Job-Abhängigkeiten
-                // und der Maschinenreihenfolge aktualisieren werden.
                 openPredecessorCount[operation] = 0;
                 directSuccessors[operation] = new List<Operation>();
-                // Start- und Endzeiten aller Operationen werden auf 0 gesetzt, da sie neu berechnet werden.
+
+                // Alte Zeiten werden gelöscht, da der Schedule vollständig neu berechnet wird.
                 operation.StartTime = 0;
                 operation.EndTime = 0;
             }
-            // Aufbau der direkten Nachfolgerbeziehungen basierend auf den Job-Abhängigkeiten.
-            //Iteration über alle Jobs und deren Operationen, um die direkten Nachfolger zu bestimmen.
-            //Jede Operation (außer der letzten) hat als direkten Nachfolger die nächste Operation im selben Job.
+
+            // Fügt die festen Vorgängerbeziehungen innerhalb jedes Jobs hinzu.
             foreach (Job job in instance.Jobs)
             {
                 for (int i = 0; i < job.Operations.Count - 1; i++)
@@ -50,12 +58,12 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                     openPredecessorCount[after]++;
                 }
             }
-            // Aufbau der direkten Nachfolgerbeziehungen basierend auf der Maschinenreihenfolge.
+
+            // Fügt die Vorgängerbeziehungen aus der aktuellen Maschinenreihenfolge hinzu.
             foreach (var pair in machineOrders)
             {
-                //Zuerst die Operationen auf der aktuellen Maschine extrahieren, um die direkten Nachfolger basierend auf der Reihenfolge zu bestimmen.
                 List<Operation> operationsOnMachine = pair.Value;
-                // Jede Operation (außer der letzten) hat als direkten Nachfolger die nächste Operation auf derselben Maschine.
+
                 for (int i = 0; i < operationsOnMachine.Count - 1; i++)
                 {
                     Operation before = operationsOnMachine[i];
@@ -65,44 +73,53 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                     openPredecessorCount[after]++;
                 }
             }
-            // Initialisierung der Warteschlange mit den Operationen, die keine offenen Vorgänger haben und somit sofort geplant werden können.
+            // Operationen ohne offene Vorgänger können direkt eingeplant werden.
             Queue<Operation> readyOperations =
                 new Queue<Operation>(
                     allOperations.Where(operation =>
                         openPredecessorCount[operation] == 0));
-            // Anzahl der geplanten Operationen, um am Ende zu überprüfen, ob alle Operationen erfolgreich geplant wurden.
+
             int numberOfScheduledOperations = 0;
-            // Hauptschleife zur Planung der Operationen, bis keine mehr bereit sind.
+            /*
+           Berechnet die früheste zulässige Startzeit der aktuellen Operation.
+           Dabei werden der Job-Vorgänger, der Maschinen-Vorgänger und mögliche
+           Setup-Zeiten berücksichtigt.
+           */
+
             while (readyOperations.Count > 0)
             {
-                // Die nächste Operation aus der Warteschlange entnehmen, die geplant werden soll.
                 Operation current = readyOperations.Dequeue();
-                // Berechnung der frühesten Startzeit für die aktuelle Operation basierend auf den bereits geplanten Vorgängeroperationen und der Maschinenreihenfolge.
+
                 int earliestStart =
                     EarliestStartCalculator.Calculate(
                         instance,
                         machineOrders,
                         current);
-                // Setzen der Start- und Endzeiten der aktuellen Operation basierend auf der berechneten frühesten Startzeit und der Verarbeitungszeit.
+
                 current.StartTime = earliestStart;
                 current.EndTime =
                     current.StartTime + current.ProcessingTime;
-                // Aktualisierung von cmax, um die maximale Fertigstellungszeit aller geplanten Operationen zu verfolgen.
+
                 cmax = Math.Max(cmax, current.EndTime);
-                // Erhöhung der Anzahl der geplanten Operationen, um am Ende überprüfen zu können, ob alle Operationen erfolgreich geplant wurden.
                 numberOfScheduledOperations++;
-                // Aktualisierung der offenen Vorgängeranzahl für die direkten Nachfolger der aktuellen Operation.
+                /*
+                Nach dem Einplanen der aktuellen Operation wird sie als Vorgänger erledigt.
+                Dadurch können ihre Nachfolger eventuell planbar werden.
+                */
                 foreach (Operation successor in directSuccessors[current])
                 {
-                    // Reduzierung der Anzahl der offenen Vorgänger für den Nachfolger, da die aktuelle Operation nun geplant ist.
                     openPredecessorCount[successor]--;
-                    // Wenn der Nachfolger keine offenen Vorgänger mehr hat, wird er zur Warteschlange der bereitstehenden Operationen hinzugefügt, da er nun geplant werden kann.
+
                     if (openPredecessorCount[successor] == 0)
                     {
                         readyOperations.Enqueue(successor);
                     }
                 }
             }
+            /*
+            Wenn nicht alle Operationen geplant wurden, enthält die Kombination aus
+            Job-Reihenfolge und Maschinenreihenfolge einen Zyklus und ist unzulässig.
+            */
 
             return numberOfScheduledOperations == allOperations.Count;
         }
