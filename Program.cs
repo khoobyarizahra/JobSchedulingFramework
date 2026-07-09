@@ -21,10 +21,13 @@ public class Program
             Separater Lauf nur für den CP-Solver.
 
         4 - Experimental evaluation screening:
-            Neue wissenschaftliche Variantenanalyse.
-            Diese Option führt mehrere Tabu-Search-Varianten auf einer
-            repräsentativen Instanzauswahl aus und schreibt eine detaillierte
-            Evaluations-CSV.
+            Systematische Variantenanalyse mit Restart-, Penalty-, Tabu-Dauer-,
+            Exact-Evaluation- und Nachbarschaftsvarianten.
+
+        5 - Move selection evaluation:
+            Separate Analyse der schnellen Move-Abschätzung.
+            Dabei wird geprüft, ob die Abschätzung bessere Kandidaten auswählt
+            als eine vollständige exakte Bewertung oder eine zufällige Auswahl.
         */
 
         Console.WriteLine("Select mode:");
@@ -32,6 +35,7 @@ public class Program
         Console.WriteLine("2 - Full benchmark evaluation");
         Console.WriteLine("3 - CP benchmark only");
         Console.WriteLine("4 - Experimental evaluation screening");
+        Console.WriteLine("5 - Move selection evaluation");
         Console.Write("Choice: ");
 
         string? choice =
@@ -52,12 +56,27 @@ public class Program
         else if (choice == "4")
         {
             /*
-            Diese neue Option startet die systematische Variantenanalyse.
+            Diese Option startet die breite Screening-Evaluation.
 
             Der normale Benchmark-Runner bleibt unverändert, damit die ursprüngliche
             Abgabe-Baseline nicht mit den späteren Experimenten vermischt wird.
             */
             TabuEvaluationRunner.RunScreeningEvaluation();
+        }
+        else if (choice == "5")
+        {
+            /*
+            Diese Option startet die gezielte Move-Selection-Evaluation.
+
+            Verglichen werden:
+            - Estimate_Top20
+            - NoEstimate_AllExact
+            - NoEstimate_Random20
+
+            Dadurch kann untersucht werden, ob die schnelle Move-Abschätzung
+            methodisch sinnvoll ist.
+            */
+            TabuEvaluationRunner.RunMoveSelectionEvaluation();
         }
         else
         {

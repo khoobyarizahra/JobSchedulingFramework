@@ -24,6 +24,7 @@ namespace JobShopSchedulingFramework.Evaluation
         - Anzahl exakt bewerteter Moves
         - Tabu-Dauer
         - Nachbarschaftsvergleich
+        - Einfluss der schnellen Move-Abschätzung
 
         Für den ersten Schritt wird bewusst eine Screening-Evaluation verwendet.
         Das bedeutet: viele Varianten, aber nur eine repräsentative Auswahl von
@@ -36,6 +37,9 @@ namespace JobShopSchedulingFramework.Evaluation
 
         private const string ScreeningOutputFileName =
             "Tabu_Evaluation_Screening.csv";
+
+        private const string MoveSelectionOutputFileName =
+            "Tabu_Evaluation_MoveSelection.csv";
 
         public static void RunScreeningEvaluation()
         {
@@ -74,6 +78,86 @@ namespace JobShopSchedulingFramework.Evaluation
             List<TabuEvaluationVariant> variants =
                 TabuEvaluationVariantFactory.CreateScreeningVariants();
 
+            RunEvaluation(
+                selectedInstanceFiles,
+                variants,
+                ScreeningOutputFileName,
+                "SCREENING EVALUATION");
+        }
+
+        public static void RunMoveSelectionEvaluation()
+        {
+            /*
+            Diese Evaluation untersucht gezielt, ob die schnelle Move-Abschätzung
+            hilfreich ist.
+
+            Verglichen werden drei Varianten:
+            - Estimate_Top20:
+              Baseline-Verhalten. Alle Moves werden schnell abgeschätzt und danach
+              werden die besten 20 Moves exakt bewertet.
+
+            - NoEstimate_AllExact:
+              Die schnelle Abschätzung wird vollständig deaktiviert. Alle erzeugten
+              Moves werden exakt bewertet, soweit das Zeitlimit dies erlaubt.
+
+            - NoEstimate_Random20:
+              Die schnelle Abschätzung wird ebenfalls deaktiviert. Stattdessen werden
+              zufällig 20 Moves pro Iteration exakt bewertet.
+
+            Dadurch kann geprüft werden, ob die Abschätzung gute Moves besser
+            auswählt als eine zufällige Auswahl und ob eine vollständige exakte
+            Bewertung trotz höherer Kosten bessere Ergebnisse liefert.
+            */
+
+            Console.WriteLine();
+            Console.WriteLine("=======================================");
+            Console.WriteLine(" TABU SEARCH MOVE SELECTION EVALUATION");
+            Console.WriteLine("=======================================");
+            Console.WriteLine();
+
+            string benchmarkFolder =
+                Path.Combine(
+                    GetProjectRootFolder(),
+                    "Instances",
+                    "Benchmark");
+
+            if (!Directory.Exists(benchmarkFolder))
+            {
+                Console.WriteLine("Benchmark folder not found:");
+                Console.WriteLine(benchmarkFolder);
+                return;
+            }
+
+            List<string> selectedInstanceFiles =
+                GetMoveSelectionInstanceFiles(
+                    benchmarkFolder);
+
+            List<TabuEvaluationVariant> variants =
+                TabuEvaluationVariantFactory.CreateMoveSelectionComparisonVariants();
+
+            RunEvaluation(
+                selectedInstanceFiles,
+                variants,
+                MoveSelectionOutputFileName,
+                "MOVE SELECTION EVALUATION");
+        }
+
+        private static void RunEvaluation(
+            List<string> selectedInstanceFiles,
+            List<TabuEvaluationVariant> variants,
+            string outputFileName,
+            string evaluationTitle)
+        {
+            /*
+            Gemeinsame Ausführungslogik für verschiedene Evaluationsarten.
+
+            Dadurch verwenden Screening-Evaluation und Move-Selection-Evaluation
+            denselben Ablauf:
+            - Initialheuristik einmal pro Instanz ausführen,
+            - alle Varianten auf derselben Startlösung testen,
+            - Ergebnisse direkt nach jedem Lauf in eine CSV-Datei schreiben.
+            */
+
             Console.WriteLine("Selected instances: " + selectedInstanceFiles.Count);
             Console.WriteLine("Evaluation variants: " + variants.Count);
             Console.WriteLine("Run mode: 90s");
@@ -85,7 +169,7 @@ namespace JobShopSchedulingFramework.Evaluation
                     GetProjectRootFolder(),
                     "Results",
                     "Csv",
-                    ScreeningOutputFileName));
+                    outputFileName));
             Console.WriteLine();
 
             bool firstRow =
@@ -161,7 +245,7 @@ namespace JobShopSchedulingFramework.Evaluation
 
                         TabuEvaluationCsvWriter.WriteResultsToFile(
                             new List<TabuEvaluationResultRow> { row },
-                            ScreeningOutputFileName,
+                            outputFileName,
                             append: !firstRow);
 
                         firstRow =
@@ -197,7 +281,7 @@ namespace JobShopSchedulingFramework.Evaluation
 
             Console.WriteLine();
             Console.WriteLine("=======================================");
-            Console.WriteLine(" SCREENING EVALUATION FINISHED");
+            Console.WriteLine(" " + evaluationTitle + " FINISHED");
             Console.WriteLine("=======================================");
             Console.WriteLine("Completed runs: " + completedRuns + " / " + totalRuns);
             Console.WriteLine("CSV file:");
@@ -206,7 +290,7 @@ namespace JobShopSchedulingFramework.Evaluation
                     GetProjectRootFolder(),
                     "Results",
                     "Csv",
-                    ScreeningOutputFileName));
+                    outputFileName));
         }
 
         private static TabuEvaluationResultRow RunSingleVariant(
@@ -483,6 +567,89 @@ namespace JobShopSchedulingFramework.Evaluation
                 "TeamB_2"
             };
 
+            return BuildExistingInstanceFileList(
+                benchmarkFolder,
+                selectedInstanceNames);
+        }
+
+        private static List<string> GetMoveSelectionInstanceFiles(
+        string benchmarkFolder)
+        {
+            /*
+            Für die Move-Selection-Evaluation wird eine gezielte Instanzauswahl
+            verwendet.
+
+            Die Auswahl basiert auf der vorherigen Screening-Analyse:
+            Es werden vor allem Instanzen gewählt, bei denen die Anzahl exakt bewerteter
+            Moves oder die Qualität der Move-Auswahl bereits einen sichtbaren Einfluss
+            auf das Ergebnis hatte.
+
+            Kleine Instanzen ohne Variantenunterschiede werden bewusst nicht verwendet,
+            weil sie für diese Fragestellung wenig zusätzliche Erkenntnis liefern.
+            TeamB_3 wird ebenfalls ausgeschlossen, da diese Instanz in der Baseline sehr
+            früh wegen fehlender Moves abbrach und die Move-Auswahl dort kaum bewertet
+            werden kann.
+            */
+
+            string[] selectedInstanceNames =
+            {
+            /*
+            Mittlere Kontrollinstanz:
+            Viele Varianten lagen hier nah beieinander. Dadurch kann geprüft werden,
+            ob die Move-Auswahl nur auf schwierigen Instanzen wirkt oder auch auf
+            stabileren Fällen.
+            */
+            "ClassroomInstanceSet3_1",
+
+            /*
+            Mittelgroße Instanz mit sichtbaren Variantenunterschieden.
+            Diese Instanz eignet sich, um zu prüfen, ob die schnelle Abschätzung
+            gute Kandidaten zuverlässig auswählt.
+            */
+            "ClassroomInstanceSet6_1",
+
+            /*
+            Größere Classroom-Instanz mit deutlichen Verbesserungsmöglichkeiten.
+            Bei größeren Nachbarschaften ist die Kandidatenauswahl besonders wichtig.
+            */
+            "ClassroomInstanceSet10_3",
+
+            /*
+            Eigene Team-F-Instanz.
+            Diese Instanz ist für die projektbezogene Bewertung besonders relevant.
+            */
+            "TeamF_Instance5",
+
+            /*
+            Große Teaminstanz.
+            In der vorherigen Analyse war eine höhere Anzahl exakt bewerteter Moves
+            besonders relevant. Dadurch ist diese Instanz gut geeignet, um die
+            Qualität der Move-Abschätzung zu prüfen.
+            */
+            "TeamA_3",
+
+            /*
+            Große Teaminstanz.
+            Auch hier zeigte die vorherige Analyse, dass eine breitere exakte
+            Bewertung bessere Ergebnisse liefern kann.
+            */
+            "TeamB_1"
+        };
+
+            return BuildExistingInstanceFileList(
+                benchmarkFolder,
+                selectedInstanceNames);
+        }
+
+        private static List<string> BuildExistingInstanceFileList(
+            string benchmarkFolder,
+            string[] selectedInstanceNames)
+        {
+            /*
+            Erstellt aus den Instanznamen die Dateipfade und überspringt fehlende
+            Dateien mit einer Warnung.
+            */
+
             List<string> files =
                 new List<string>();
 
@@ -501,7 +668,7 @@ namespace JobShopSchedulingFramework.Evaluation
                 else
                 {
                     Console.WriteLine(
-                        "Warning: screening instance not found: " +
+                        "Warning: evaluation instance not found: " +
                         file);
                 }
             }
