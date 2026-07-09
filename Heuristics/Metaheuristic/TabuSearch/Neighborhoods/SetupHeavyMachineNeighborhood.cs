@@ -1,21 +1,40 @@
 ﻿using JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core;
 using JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Criticality;
 using JobShopSchedulingFramework.Models;
-using System.Reflection.PortableExecutable;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighborhoods
 {
+    /*
+    Diese Nachbarschaft erzeugt Moves auf Basis hoher Setup-Zeiten.
 
-    // Diese Nachbarschaft erzeugt Moves basierend auf hohen Setupkosten zwischen Jobs auf Maschinen
-    // Vertauscht sowohl direkte als auch indirekte Nachbarn
+    Idee:
+    Wenn zwei direkt aufeinanderfolgende Operationen auf einer Maschine hohe
+    reihenfolgeabhängige Rüstzeiten verursachen, kann ein Tausch in diesem Bereich
+    den Makespan verbessern.
+
+    Zusätzlich werden Moves innerhalb kritischer Blöcke ergänzt. Dadurch kombiniert
+    diese Nachbarschaft zwei Informationen:
+    - hohe Setup-Zeiten auf Maschinen,
+    - kritische Operationen, die für den aktuellen Cmax relevant sind.
+
+    Diese Nachbarschaft ist experimentell und kann verwendet werden, um zu prüfen,
+    ob setup-orientierte Moves gegenüber rein kritischen Block-Moves Vorteile bringen.
+    */
     public class SetupHeavyMachineNeighborhood : INeighborhoodDefinition
     {
-        
         private readonly int maxMovesPerMachine;
 
         public SetupHeavyMachineNeighborhood()
         {
-            // Begrenzung zur Laufzeitreduktion
+            /*
+            Begrenzung der Anzahl setup-basierter Moves pro Maschine.
+
+            Ohne diese Begrenzung könnten auf großen Instanzen sehr viele Moves
+            entstehen. Das würde die Laufzeit erhöhen, bevor überhaupt die exakte
+            Move-Bewertung beginnt.
+            */
             maxMovesPerMachine = 5;
         }
 
@@ -24,22 +43,22 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
             Dictionary<int, List<Operation>> machineOrders,
             List<CriticalBlock> criticalBlocks)
         {
-
-            // Liste aller möglichen Nachbarschafts-Moves
             List<Move> moves =
                 new List<Move>();
 
-            //Maschinenanalyse
+            /*
+            Zuerst werden alle Maschinen betrachtet. Für jede Maschine werden die
+            Positionen mit den höchsten Setup-Zeiten gesucht. In der Umgebung dieser
+            Positionen werden lokale Swap-Moves erzeugt.
+            */
             foreach (var pair in machineOrders)
             {
-                // Maschinen - ID
-                int machine =           
+                int machine =
                     pair.Key;
-                // Reihenfolge der Operationen
-                List<Operation> operations =        
 
+                List<Operation> operations =
                     pair.Value;
-                // Finde Positionen mit hohen Setupkosten
+
                 List<(int Index, int SetupCost)> setupPositions =
                     FindHighSetupPositions(
                         instance,
@@ -47,7 +66,7 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
 
                 int addedMoves =
                     0;
-                // Bearbeite nur die längsten Setup-Zeiten (Top 5)
+
                 foreach (var setupPosition in setupPositions)
                 {
                     if (addedMoves >= maxMovesPerMachine)
@@ -57,21 +76,23 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
 
                     int index =
                         setupPosition.Index;
-                    // Lokale Nachbarschaft um Problemstelle
-                    // Swap mit nächstem Element
+
+                    /*
+                    Die problematische Setup-Kante liegt zwischen index und index + 1.
+                    Deshalb werden Moves in der direkten Umgebung dieser Kante erzeugt.
+                    */
                     AddAdjacentMove(
                         machine,
                         operations,
                         index,
                         moves);
 
-                    // Swap mit vorherigem Element
                     AddMoveWithPrevious(
                         machine,
                         operations,
                         index,
                         moves);
-                    // Swap mit nächstem Element (leicht verschoben)
+
                     AddMoveWithNext(
                         machine,
                         operations,
@@ -82,7 +103,11 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
                 }
             }
 
-            //Critical Blockerweiterung
+            /*
+            Zusätzlich werden Moves innerhalb kritischer Blöcke erzeugt.
+            Diese Moves sind besonders relevant, weil kritische Operationen direkt
+            mit dem aktuellen Cmax zusammenhängen.
+            */
             AddCriticalBlockMoves(
                 criticalBlocks,
                 moves);
@@ -97,7 +122,10 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
             List<(int Index, int SetupCost)> setupPositions =
                 new List<(int Index, int SetupCost)>();
 
-            // Prüfe alle aufeinanderfolgenden Operationen
+            /*
+            Für jede direkte Nachbarschaft auf der Maschine wird die Setup-Zeit
+            zwischen den zugehörigen Jobs bestimmt.
+            */
             for (int i = 0; i < operations.Count - 1; i++)
             {
                 Operation before =
@@ -106,7 +134,6 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
                 Operation after =
                     operations[i + 1];
 
-                // Setupkosten zwischen zwei Jobs
                 int setupCost =
                     instance.SetupTimes[
                         before.JobID - 1,
@@ -115,15 +142,16 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
                 setupPositions.Add(
                     (i, setupCost));
             }
-            // Sortiere nach höchsten Setupkosten zuerst
-            setupPositions =
-                setupPositions
-                    .OrderByDescending(item => item.SetupCost)
-                    .ToList();
 
-            return setupPositions;
+            /*
+            Die höchsten Setup-Zeiten werden zuerst betrachtet, weil sie am ehesten
+            Verbesserungspotenzial bieten.
+            */
+            return setupPositions
+                .OrderByDescending(item => item.SetupCost)
+                .ToList();
         }
-        // Swap mit Nachfolger
+
         private void AddAdjacentMove(
             int machine,
             List<Operation> operations,
@@ -143,7 +171,7 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
                 index + 1,
                 moves);
         }
-        // Swap mit Vorgänger
+
         private void AddMoveWithPrevious(
             int machine,
             List<Operation> operations,
@@ -165,7 +193,7 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
                 index,
                 moves);
         }
-        // Swap mit nächsten Element
+
         private void AddMoveWithNext(
             int machine,
             List<Operation> operations,
@@ -192,16 +220,21 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
             List<CriticalBlock> criticalBlocks,
             List<Move> moves)
         {
+            /*
+            Innerhalb eines kritischen Blocks werden paarweise Swaps erzeugt.
+            Die lokalen Blockindizes müssen auf die Indizes der vollständigen
+            Maschinenreihenfolge umgerechnet werden.
+            */
             foreach (CriticalBlock block in criticalBlocks)
             {
-                for (int i = 0; i < block.operations.Count - 1; i++)
+                for (int i = 0; i < block.Operations.Count - 1; i++)
                 {
-                    for (int j = i + 1; j < block.operations.Count; j++)
+                    for (int j = i + 1; j < block.Operations.Count; j++)
                     {
                         AddMove(
-                            block.machine,
-                            block.operations,
-                            block.startIndexInMachine,
+                            block.Machine,
+                            block.Operations,
+                            block.StartIndexInMachine,
                             i,
                             j,
                             moves);
@@ -271,6 +304,10 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
             List<Move> moves,
             Move newMove)
         {
+            /*
+            Doppelte Moves und direkte Rückmoves werden vermieden, damit dieselbe
+            Nachbarschaft nicht mehrfach bewertet wird.
+            */
             foreach (Move existingMove in moves)
             {
                 if (existingMove.GetKey() == newMove.GetKey() ||
@@ -280,7 +317,8 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Neighbo
                 }
             }
 
-            moves.Add(newMove);
+            moves.Add(
+                newMove);
         }
     }
 }

@@ -81,7 +81,7 @@ Schedule
    ↓
 Nachbarschaftsmodell
    ↓
-kritischer Pfad
+kritische Operationen
    ↓
 kritische Blöcke
    ↓

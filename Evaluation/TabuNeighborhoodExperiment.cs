@@ -102,8 +102,8 @@ namespace JobShopSchedulingFramework.Evaluation
                     clonedOperation.EndTime =
                         originalOperation.EndTime;
 
-                    clonedOperation.remainingProcessingTime =
-                        originalOperation.remainingProcessingTime;
+                    clonedOperation.RemainingProcessingTime =
+                        originalOperation.RemainingProcessingTime;
 
                     clonedJob.Operations.Add(
                         clonedOperation);

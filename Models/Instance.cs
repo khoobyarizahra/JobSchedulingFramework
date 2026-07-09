@@ -1,34 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-
-/*
-  INSTANCE Repräsentiert das gesamte Scheduling-Problem:
-   - Anzahl Jobs
-   - Anzahl Maschinen
-   - alle Jobs
-   - Setup-Zeiten zwischen Jobs
-  */
-
+﻿using System.Collections.Generic;
 
 namespace JobShopSchedulingFramework.Models
 {
     /*
-    Repräsentiert das gesamte Scheduling-Problem:
-    - Anzahl Jobs
-    - Anzahl Maschinen
-    - alle Jobs
-    - Setup-Zeiten zwischen Jobs
-  */
-
+    Enthält die vollständigen Eingabedaten eines Job-Shop-Scheduling-Problems.
+    Die Instanz dient als gemeinsame Datenbasis für Heuristiken, Tabu Search und CP-SAT.
+    */
     public class Instance
     {
         public int NumJobs { get; set; }
         public int NumMachines { get; set; }
-        public List<Job> Jobs {  get; set; } = new List<Job>();
+
+        // Jobs mit ihren Operationen in der vorgegebenen Bearbeitungsreihenfolge.
+        public List<Job> Jobs { get; set; } = new List<Job>();
+
+        // Reihenfolgeabhängige Setup-Zeiten zwischen zwei direkt nacheinander bearbeiteten Jobs.
         public int[,] SetupTimes { get; set; } = new int[0, 0];
-
     }
-
 }
