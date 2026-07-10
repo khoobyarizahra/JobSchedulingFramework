@@ -40,21 +40,25 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
         private readonly Random randomMoveSelector;
 
         public TabuSearchSolver(
-            int maxIterations,
-            int timeLimitSeconds,
-            INeighborhoodDefinition neighborhoodDefinition)
-            : this(
-                  TabuSearchSettings.CreateDefault(
-                      maxIterations,
-                      timeLimitSeconds),
-                  neighborhoodDefinition)
+        int maxIterations,
+        int timeLimitSeconds,
+        INeighborhoodDefinition neighborhoodDefinition)
+        : this(
+          TabuSearchSettings.CreateAdaptiveDefault(
+              maxIterations,
+              timeLimitSeconds),
+          neighborhoodDefinition)
         {
             /*
             Dieser Konstruktor bleibt erhalten, damit bestehende Aufrufe im Projekt
-            nicht angepasst werden müssen. Intern wird jetzt eine Settings-Klasse
-            verwendet.
+            nicht angepasst werden müssen.
+
+            Nach der Evaluation verwendet der normale Solver jetzt die adaptive exakte
+            Move-Bewertung als verbesserte Standardstrategie. Die alte Baseline bleibt
+            weiterhin über TabuSearchSettings.CreateDefault verfügbar.
             */
         }
+ 
 
         public TabuSearchSolver(
             TabuSearchSettings settings,
@@ -598,23 +602,23 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
         }
 
         private List<Move> SelectMovesForExactEvaluation(
-            Instance instance,
-            Dictionary<int, List<Operation>> currentOrders,
-            CriticalOperationAnalysisResult analysisResult,
-            List<Move> moves,
-            MoveTabuList tabuList,
-            int iterationsSinceImprovement,
-            bool useTimeLimit,
-            Stopwatch stopwatch,
-            TabuSearchStatistics statistics)
-        {
+        Instance instance,
+        Dictionary<int, List<Operation>> currentOrders,
+        CriticalOperationAnalysisResult analysisResult,
+        List<Move> moves,
+        MoveTabuList tabuList,
+        int iterationsSinceImprovement,
+        bool useTimeLimit,
+        Stopwatch stopwatch,
+        TabuSearchStatistics statistics)
+            {
             /*
             Diese Methode entscheidet, welche Moves exakt bewertet werden.
 
             Im Standardmodus wird zuerst die schnelle Move-Abschätzung verwendet.
-            Für die neue Evaluation kann diese Abschätzung vollständig deaktiviert
-            werden. Dadurch kann untersucht werden, ob die Abschätzung gute Moves
-            zuverlässig auswählt oder ob sie gute Kandidaten zu früh aussortiert.
+            Für die neue adaptive Variante bleibt diese Abschätzung aktiv, aber die Anzahl
+            exakt bewerteter Kandidaten wird nicht mehr fest gewählt. Stattdessen hängt sie
+            von der Anzahl der generierten Moves und von der Stagnation der Suche ab.
             */
             if (settings.MoveSelectionMode == MoveSelectionMode.EstimatedTopCandidates)
             {
@@ -630,11 +634,14 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
                         stopwatch,
                         statistics);
 
+                int exactEvaluationLimit =
+                    CalculateExactEvaluationLimit(
+                        estimatedMoves.Count,
+                        iterationsSinceImprovement);
+
                 return estimatedMoves
                     .OrderBy(candidate => candidate.EstimatedEvaluationValue)
-                    .Take(Math.Min(
-                        settings.MaxExactEvaluationsPerIteration,
-                        estimatedMoves.Count))
+                    .Take(exactEvaluationLimit)
                     .Select(candidate => candidate.Move)
                     .ToList();
             }
@@ -698,6 +705,77 @@ namespace JobShopSchedulingFramework.Heuristics.Metaheuristic.TabuSearch.Core
             throw new InvalidOperationException(
                 "Unknown move selection mode: " +
                 settings.MoveSelectionMode);
+        }
+        private int CalculateExactEvaluationLimit(
+    int generatedMoveCount,
+    int iterationsSinceImprovement)
+        {
+            /*
+            Berechnet, wie viele Moves in dieser Iteration exakt bewertet werden.
+
+            Ohne adaptive Bewertung bleibt das alte Verhalten erhalten:
+            Es werden maximal MaxExactEvaluationsPerIteration Kandidaten exakt geprüft.
+
+            Mit adaptiver Bewertung wird die Anzahl abhängig von der Nachbarschaftsgröße
+            und von der aktuellen Stagnation erhöht. Dadurch bleibt die schnelle
+            Abschätzung als Vorfilter erhalten, aber bei größeren Nachbarschaften oder
+            längerer Stagnation werden mehr Kandidaten exakt nachbewertet.
+            */
+            if (generatedMoveCount <= 0)
+            {
+                return 0;
+            }
+
+            if (!settings.UseAdaptiveExactEvaluationLimit)
+            {
+                return Math.Min(
+                    settings.MaxExactEvaluationsPerIteration,
+                    generatedMoveCount);
+            }
+
+            if (generatedMoveCount <= settings.AdaptiveExactEvaluateAllMoveThreshold)
+            {
+                return generatedMoveCount;
+            }
+
+            int fractionBasedLimit =
+                (int)Math.Ceiling(
+                    generatedMoveCount *
+                    settings.AdaptiveExactMoveFraction);
+
+            int exactEvaluationLimit =
+                Math.Max(
+                    settings.AdaptiveExactMinEvaluations,
+                    fractionBasedLimit);
+
+            if (iterationsSinceImprovement >= settings.HighStagnationThreshold)
+            {
+                exactEvaluationLimit =
+                    Math.Max(
+                        exactEvaluationLimit,
+                        settings.AdaptiveExactHighStagnationMinEvaluations);
+            }
+            else if (iterationsSinceImprovement >= settings.MediumStagnationThreshold)
+            {
+                exactEvaluationLimit =
+                    Math.Max(
+                        exactEvaluationLimit,
+                        settings.AdaptiveExactMediumStagnationMinEvaluations);
+            }
+
+            exactEvaluationLimit =
+                Math.Min(
+                    exactEvaluationLimit,
+                    settings.AdaptiveExactMaxEvaluations);
+
+            exactEvaluationLimit =
+                Math.Min(
+                    exactEvaluationLimit,
+                    generatedMoveCount);
+
+            return Math.Max(
+                1,
+                exactEvaluationLimit);
         }
 
         private MoveSelectionResult SelectBestMove(

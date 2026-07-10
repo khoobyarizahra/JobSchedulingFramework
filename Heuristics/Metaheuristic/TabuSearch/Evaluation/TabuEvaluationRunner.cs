@@ -40,6 +40,9 @@ namespace JobShopSchedulingFramework.Evaluation
 
         private const string MoveSelectionOutputFileName =
             "Tabu_Evaluation_MoveSelection.csv";
+        
+        private const string AdaptiveExactOutputFileName =
+        "Tabu_Evaluation_AdaptiveExact.csv";
 
         public static void RunScreeningEvaluation()
         {
@@ -140,6 +143,60 @@ namespace JobShopSchedulingFramework.Evaluation
                 variants,
                 MoveSelectionOutputFileName,
                 "MOVE SELECTION EVALUATION");
+        }
+
+        public static void RunAdaptiveExactEvaluation()
+        {
+            /*
+            Diese Evaluation vergleicht feste Grenzen für die exakte Move-Bewertung
+            mit der neuen adaptiven Strategie.
+
+            Die adaptive Strategie basiert auf der vorherigen Evaluation:
+            Die Move-Abschätzung bleibt aktiv, aber die Anzahl exakt bewerteter Kandidaten
+            wird abhängig von der Anzahl generierter Moves und von der Stagnation gewählt.
+
+            Verglichen werden:
+            - Baseline mit 20 exakt bewerteten Kandidaten
+            - feste Grenzen mit 50, 100 und 200 Kandidaten
+            - adaptive Grenze zwischen 50 und 200 Kandidaten
+            */
+
+            Console.WriteLine();
+            Console.WriteLine("=======================================");
+            Console.WriteLine(" TABU SEARCH ADAPTIVE EXACT EVALUATION");
+            Console.WriteLine("=======================================");
+            Console.WriteLine();
+
+            string benchmarkFolder =
+                Path.Combine(
+                    GetProjectRootFolder(),
+                    "Instances",
+                    "Benchmark");
+
+            if (!Directory.Exists(benchmarkFolder))
+            {
+                Console.WriteLine("Benchmark folder not found:");
+                Console.WriteLine(benchmarkFolder);
+                return;
+            }
+
+            /*
+            Es werden bewusst dieselben Instanzen wie in der Move-Selection-Evaluation
+            verwendet. Dadurch können die Ergebnisse direkt mit der vorherigen Analyse
+            verglichen werden.
+            */
+            List<string> selectedInstanceFiles =
+                GetMoveSelectionInstanceFiles(
+                    benchmarkFolder);
+
+            List<TabuEvaluationVariant> variants =
+                TabuEvaluationVariantFactory.CreateAdaptiveExactEvaluationComparisonVariants();
+
+            RunEvaluation(
+                selectedInstanceFiles,
+                variants,
+                AdaptiveExactOutputFileName,
+                "ADAPTIVE EXACT EVALUATION");
         }
 
         private static void RunEvaluation(

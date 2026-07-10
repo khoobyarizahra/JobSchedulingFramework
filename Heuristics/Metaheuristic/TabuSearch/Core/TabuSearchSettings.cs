@@ -52,6 +52,59 @@
         public int MaxExactEvaluationsPerIteration { get; set; } = 20;
 
         /*
+        Adaptive exakte Move-Bewertung.
+
+        Wenn diese Option aktiviert ist, wird die Anzahl exakt bewerteter Kandidaten
+        nicht mehr als fixer Wert verwendet. Stattdessen hängt sie von der Anzahl der
+        generierten Moves und von der aktuellen Stagnation der Suche ab.
+
+        Die Idee basiert auf der Evaluation:
+        Die schnelle Abschätzung ist nützlich, aber 20 exakte Bewertungen sind auf
+        größeren Instanzen teilweise zu restriktiv. Deshalb wird bei größeren
+        Nachbarschaften und längerer Stagnation eine breitere exakte Nachbewertung
+        verwendet.
+        */
+        public bool UseAdaptiveExactEvaluationLimit { get; set; } = false;
+
+        /*
+        Wenn nur wenige Moves erzeugt werden, sollen alle exakt bewertet werden.
+        Dadurch geht kein Kandidat durch eine unnötige Vorauswahl verloren.
+        */
+        public int AdaptiveExactEvaluateAllMoveThreshold { get; set; } = 50;
+
+        /*
+        Mindestanzahl exakt bewerteter Kandidaten im adaptiven Modus.
+
+        Dieser Wert verhindert, dass bei größeren Nachbarschaften zu wenige Moves
+        exakt geprüft werden.
+        */
+        public int AdaptiveExactMinEvaluations { get; set; } = 50;
+
+        /*
+        Obergrenze für exakte Bewertungen im adaptiven Modus.
+
+        Diese Grenze verhindert, dass einzelne Iterationen zu teuer werden.
+        */
+        public int AdaptiveExactMaxEvaluations { get; set; } = 200;
+
+        /*
+        Anteil der generierten Moves, der im normalen Suchzustand exakt bewertet
+        werden soll. Ein Wert von 0.25 bedeutet, dass ungefähr 25 Prozent der
+        generierten Moves exakt geprüft werden.
+        */
+        public double AdaptiveExactMoveFraction { get; set; } = 0.25;
+
+        /*
+        Mindestanzahl exakt bewerteter Kandidaten bei mittlerer und hoher Stagnation.
+
+        Wenn längere Zeit keine neue globale Bestlösung gefunden wird, wird die
+        Move-Auswahl intensiver. Dadurch kann die Suche bessere Kandidaten finden,
+        ohne die Abschätzung vollständig zu deaktivieren.
+        */
+        public int AdaptiveExactMediumStagnationMinEvaluations { get; set; } = 100;
+        public int AdaptiveExactHighStagnationMinEvaluations { get; set; } = 200;
+
+        /*
         Seed für die zufällige Move-Auswahl ohne Abschätzung.
 
         Der feste Seed macht die Evaluation reproduzierbar. Dadurch kann ein Lauf
@@ -138,6 +191,60 @@
             {
                 MaxIterations = maxIterations,
                 TimeLimitSeconds = timeLimitSeconds
+            };
+        }
+
+        public static TabuSearchSettings CreateAdaptiveDefault(
+    int maxIterations,
+    int timeLimitSeconds)
+        {
+            /*
+            Verbesserte Standardkonfiguration nach der experimentellen Evaluation.
+
+            Die Move-Abschätzung bleibt aktiv, weil sie bessere Kandidaten auswählt
+            als eine zufällige Auswahl. Die Anzahl exakt bewerteter Kandidaten wird aber
+            nicht mehr starr auf 20 begrenzt, sondern adaptiv gewählt.
+
+            Dadurch wird bei größeren Nachbarschaften und längerer Stagnation intensiver
+            gesucht, während kleine Nachbarschaften weiterhin effizient behandelt werden.
+            */
+            return new TabuSearchSettings
+            {
+                MaxIterations =
+                    maxIterations,
+
+                TimeLimitSeconds =
+                    timeLimitSeconds,
+
+                MoveSelectionMode =
+                    MoveSelectionMode.EstimatedTopCandidates,
+
+                MaxExactEvaluationsPerIteration =
+                    200,
+
+                UseAdaptiveExactEvaluationLimit =
+                    true,
+
+                AdaptiveExactEvaluateAllMoveThreshold =
+                    50,
+
+                AdaptiveExactMinEvaluations =
+                    50,
+
+                AdaptiveExactMaxEvaluations =
+                    200,
+
+                AdaptiveExactMoveFraction =
+                    0.25,
+
+                AdaptiveExactMediumStagnationMinEvaluations =
+                    100,
+
+                AdaptiveExactHighStagnationMinEvaluations =
+                    200,
+
+                VerboseOutput =
+                    false
             };
         }
     }

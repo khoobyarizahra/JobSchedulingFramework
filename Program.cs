@@ -26,8 +26,10 @@ public class Program
 
         5 - Move selection evaluation:
             Separate Analyse der schnellen Move-Abschätzung.
-            Dabei wird geprüft, ob die Abschätzung bessere Kandidaten auswählt
-            als eine vollständige exakte Bewertung oder eine zufällige Auswahl.
+
+        6 - Adaptive exact evaluation:
+            Vergleich fester Grenzen für exakte Move-Bewertung mit der neuen
+            adaptiven Strategie.
         */
 
         Console.WriteLine("Select mode:");
@@ -36,6 +38,7 @@ public class Program
         Console.WriteLine("3 - CP benchmark only");
         Console.WriteLine("4 - Experimental evaluation screening");
         Console.WriteLine("5 - Move selection evaluation");
+        Console.WriteLine("6 - Adaptive exact evaluation");
         Console.Write("Choice: ");
 
         string? choice =
@@ -69,14 +72,25 @@ public class Program
             Diese Option startet die gezielte Move-Selection-Evaluation.
 
             Verglichen werden:
-            - Estimate_Top20
-            - NoEstimate_AllExact
-            - NoEstimate_Random20
-
-            Dadurch kann untersucht werden, ob die schnelle Move-Abschätzung
-            methodisch sinnvoll ist.
+            - Baseline mit Move-Abschätzung und 20 exakten Bewertungen
+            - keine Abschätzung mit vollständiger exakter Bewertung
+            - keine Abschätzung mit zufälliger Auswahl von 20 Kandidaten
             */
             TabuEvaluationRunner.RunMoveSelectionEvaluation();
+        }
+        else if (choice == "6")
+        {
+            /*
+            Diese Option startet die adaptive Exact-Evaluation.
+
+            Verglichen werden:
+            - feste Grenzen mit 20, 50, 100 und 200 exakt bewerteten Kandidaten
+            - adaptive Grenze abhängig von Anzahl generierter Moves und Stagnation
+
+            Ziel ist zu prüfen, ob die neue adaptive Strategie einen besseren
+            Kompromiss zwischen Laufzeit und Lösungsqualität liefert.
+            */
+            TabuEvaluationRunner.RunAdaptiveExactEvaluation();
         }
         else
         {

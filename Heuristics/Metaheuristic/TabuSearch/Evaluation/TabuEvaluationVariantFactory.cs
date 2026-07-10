@@ -169,6 +169,162 @@ namespace JobShopSchedulingFramework.Evaluation
             };
         }
 
+        public static List<TabuEvaluationVariant> CreateAdaptiveExactEvaluationComparisonVariants()
+        {
+            /*
+            Diese Variantenliste vergleicht die bisher besten festen Einstellungen
+            für die exakte Move-Bewertung mit der neuen adaptiven Strategie.
+
+            Ziel:
+            Die Abschätzung bleibt aktiv, aber die Anzahl exakt bewerteter Kandidaten
+            wird nicht mehr fest gewählt. Stattdessen hängt sie von der Anzahl der
+            generierten Moves und von der Stagnation ab.
+
+            Dadurch wird geprüft, ob die adaptive Strategie einen besseren Kompromiss
+            zwischen Lösungsqualität und Laufzeit bietet als feste Werte wie 50, 100
+            oder 200 exakte Bewertungen pro Iteration.
+            */
+
+            return new List<TabuEvaluationVariant>
+    {
+        new TabuEvaluationVariant(
+            variantName: "Baseline_Top20",
+            category: "AdaptiveExactEvaluation",
+            description: "Baseline: Move-Abschätzung aktiv, danach maximal 20 exakt bewertete Kandidaten pro Iteration.",
+            settingsFactory: (maxIterations, timeLimitSeconds) =>
+            {
+                TabuSearchSettings settings =
+                    CreateDefaultSettings(
+                        maxIterations,
+                        timeLimitSeconds);
+
+                settings.MoveSelectionMode =
+                    MoveSelectionMode.EstimatedTopCandidates;
+
+                settings.MaxExactEvaluationsPerIteration =
+                    20;
+
+                settings.UseAdaptiveExactEvaluationLimit =
+                    false;
+
+                return settings;
+            },
+            neighborhoodFactory: () => new AllPairSwapNeighborhood(),
+            isBaseline: true),
+
+        new TabuEvaluationVariant(
+            variantName: "FixedExact_50",
+            category: "AdaptiveExactEvaluation",
+            description: "Move-Abschätzung aktiv, danach maximal 50 exakt bewertete Kandidaten pro Iteration.",
+            settingsFactory: (maxIterations, timeLimitSeconds) =>
+            {
+                TabuSearchSettings settings =
+                    CreateDefaultSettings(
+                        maxIterations,
+                        timeLimitSeconds);
+
+                settings.MoveSelectionMode =
+                    MoveSelectionMode.EstimatedTopCandidates;
+
+                settings.MaxExactEvaluationsPerIteration =
+                    50;
+
+                settings.UseAdaptiveExactEvaluationLimit =
+                    false;
+
+                return settings;
+            },
+            neighborhoodFactory: () => new AllPairSwapNeighborhood()),
+
+        new TabuEvaluationVariant(
+            variantName: "FixedExact_100",
+            category: "AdaptiveExactEvaluation",
+            description: "Move-Abschätzung aktiv, danach maximal 100 exakt bewertete Kandidaten pro Iteration.",
+            settingsFactory: (maxIterations, timeLimitSeconds) =>
+            {
+                TabuSearchSettings settings =
+                    CreateDefaultSettings(
+                        maxIterations,
+                        timeLimitSeconds);
+
+                settings.MoveSelectionMode =
+                    MoveSelectionMode.EstimatedTopCandidates;
+
+                settings.MaxExactEvaluationsPerIteration =
+                    100;
+
+                settings.UseAdaptiveExactEvaluationLimit =
+                    false;
+
+                return settings;
+            },
+            neighborhoodFactory: () => new AllPairSwapNeighborhood()),
+
+        new TabuEvaluationVariant(
+            variantName: "FixedExact_200",
+            category: "AdaptiveExactEvaluation",
+            description: "Move-Abschätzung aktiv, danach maximal 200 exakt bewertete Kandidaten pro Iteration.",
+            settingsFactory: (maxIterations, timeLimitSeconds) =>
+            {
+                TabuSearchSettings settings =
+                    CreateDefaultSettings(
+                        maxIterations,
+                        timeLimitSeconds);
+
+                settings.MoveSelectionMode =
+                    MoveSelectionMode.EstimatedTopCandidates;
+
+                settings.MaxExactEvaluationsPerIteration =
+                    200;
+
+                settings.UseAdaptiveExactEvaluationLimit =
+                    false;
+
+                return settings;
+            },
+            neighborhoodFactory: () => new AllPairSwapNeighborhood()),
+
+        new TabuEvaluationVariant(
+            variantName: "AdaptiveExact_50_200",
+            category: "AdaptiveExactEvaluation",
+            description: "Move-Abschätzung aktiv, adaptive exakte Bewertung: alle Moves bei kleinen Nachbarschaften, sonst mindestens 50, bei Stagnation 100 bis 200, maximal 200 Kandidaten.",
+            settingsFactory: (maxIterations, timeLimitSeconds) =>
+            {
+                TabuSearchSettings settings =
+                    CreateDefaultSettings(
+                        maxIterations,
+                        timeLimitSeconds);
+
+                settings.MoveSelectionMode =
+                    MoveSelectionMode.EstimatedTopCandidates;
+
+                settings.UseAdaptiveExactEvaluationLimit =
+                    true;
+
+                settings.AdaptiveExactEvaluateAllMoveThreshold =
+                    50;
+
+                settings.AdaptiveExactMinEvaluations =
+                    50;
+
+                settings.AdaptiveExactMaxEvaluations =
+                    200;
+
+                settings.AdaptiveExactMoveFraction =
+                    0.25;
+
+                settings.AdaptiveExactMediumStagnationMinEvaluations =
+                    100;
+
+                settings.AdaptiveExactHighStagnationMinEvaluations =
+                    200;
+
+                return settings;
+            },
+            neighborhoodFactory: () => new AllPairSwapNeighborhood())
+    };
+        }
+
         public static List<TabuEvaluationVariant> CreateNeighborhoodComparisonVariants()
         {
             /*
